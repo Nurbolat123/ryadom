@@ -171,10 +171,17 @@ export const confirmContacts = async (userId: string, chatId: string) => {
 /** Есть ли у пары чат или привет от target к viewer — тогда можно показать фото вне заведения. */
 export const hasConversation = async (viewerId: string, targetId: string) => {
   const [a, b] = viewerId < targetId ? [viewerId, targetId] : [targetId, viewerId];
-  const [chat, hello, target] = await Promise.all([
+  const [chat, hello, gift, target] = await Promise.all([
     prisma.chat.count({ where: { userAId: a, userBId: b } }),
     prisma.hello.count({ where: { fromUserId: targetId, toUserId: viewerId } }),
+    prisma.gift.count({
+      where: {
+        fromUserId: targetId,
+        toUserId: viewerId,
+        status: { in: ["pending", "accepted", "redeemed"] },
+      },
+    }),
     prisma.user.findUnique({ where: { id: targetId }, select: { bannedAt: true } }),
   ]);
-  return !!target && !target.bannedAt && chat + hello > 0;
+  return !!target && !target.bannedAt && chat + hello + gift > 0;
 };

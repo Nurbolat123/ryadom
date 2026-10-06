@@ -5,6 +5,7 @@ import type { z } from "zod";
 import { rateLimit } from "../rate-limit";
 import { redis } from "../redis";
 import { track } from "./analytics";
+import { pendingGiftsCount } from "./gifts";
 import { canSeePerson } from "./people";
 
 /**
@@ -356,13 +357,14 @@ export const inbox = async (userId: string) => {
 
 /** Непрочитанное во входящих — для значка в навигации. */
 export const inboxCount = async (userId: string) => {
-  const [hellos, notices] = await Promise.all([
+  const [hellos, notices, gifts] = await Promise.all([
     prisma.hello.count({
       where: { toUserId: userId, status: "pending", from: { bannedAt: null } },
     }),
     prisma.notice.count({ where: { userId, readAt: null } }),
+    pendingGiftsCount(userId),
   ]);
-  return hellos + notices;
+  return hellos + notices + gifts;
 };
 
 export const markNoticesRead = (userId: string) =>

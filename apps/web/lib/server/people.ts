@@ -27,6 +27,8 @@ export type Person = {
   helloSent: boolean;
   /** Уже есть чат (взаимность или ответ на привет). */
   chatId: string | null;
+  /** Ты уже угостил(а) этого человека за этот визит (лимит — 1). Ответ не раскрывается. */
+  giftSent: boolean;
 };
 
 export type PeopleResult =
@@ -53,12 +55,17 @@ const blockedWith = async (viewerId: string, ids: string[]) => {
   return new Set(rows.map((r) => (r.blockerId === viewerId ? r.blockedId : r.blockerId)));
 };
 
-const loadPeople = async (viewerId: string, ids: string[], locale: "ru" | "kk") => {
+const loadPeople = async (
+  viewerId: string,
+  ids: string[],
+  locale: "ru" | "kk",
+  visitId: string | null,
+) => {
   const blocked = await blockedWith(viewerId, ids);
   const visible = ids.filter((id) => id !== viewerId && !blocked.has(id));
   if (!visible.length) return [];
   const now = new Date();
-  const [users, mine, liked, hellos, chats] = await Promise.all([
+  const [users, mine, liked, hellos, chats, gifts] = await Promise.all([
     prisma.user.findMany({
       where: {
         id: { in: visible },
@@ -101,7 +108,14 @@ const loadPeople = async (viewerId: string, ids: string[], locale: "ru" | "kk") 
       },
       select: { id: true, userAId: true, userBId: true },
     }),
+    visitId
+      ? prisma.gift.findMany({
+          where: { fromUserId: viewerId, toUserId: { in: visible }, visitId },
+          select: { toUserId: true },
+        })
+      : Promise.resolve([]),
   ]);
+  const giftSet = new Set(gifts.map((g) => g.toUserId));
   const likedSet = new Set(liked.map((l) => l.toUserId));
   const helloSet = new Set(hellos.map((h) => h.toUserId));
   const chatWith = new Map(
@@ -133,6 +147,7 @@ const loadPeople = async (viewerId: string, ids: string[], locale: "ru" | "kk") 
         liked: likedSet.has(u.id),
         helloSent: helloSet.has(u.id),
         chatId: chatWith.get(u.id) ?? null,
+        giftSent: giftSet.has(u.id),
       };
     })
     .sort((a, b) => b.common.length - a.common.length || order.get(a.id)! - order.get(b.id)!);
@@ -145,7 +160,7 @@ export const listPeople = async (viewerId: string, locale: "ru" | "kk"): Promise
   return {
     ok: true,
     open: true,
-    people: await loadPeople(viewerId, await openIds(presence.venueId), locale),
+    people: await loadPeople(viewerId, await openIds(presence.venueId), locale, presence.visitId),
   };
 };
 
@@ -165,8 +180,9 @@ export const canSeePerson = async (
 };
 
 export const personCard = async (viewerId: string, targetId: string, locale: "ru" | "kk") => {
-  if (!(await canSeePerson(viewerId, targetId)) || viewerId === targetId) return null;
-  const [p] = await loadPeople(viewerId, [targetId], locale);
+  const mine = await canSeePerson(viewerId, targetId);
+  if (!mine || viewerId === targetId) return null;
+  const [p] = await loadPeople(viewerId, [targetId], locale, mine.visitId);
   return p ?? null;
 };
 

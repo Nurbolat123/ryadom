@@ -81,3 +81,20 @@ export const ReportInputSchema = z.object({
   block: z.boolean().default(true),
 });
 export const MODERATION_ACTIONS = ["dismissed", "photo_removed", "banned"] as const;
+
+/** «Угостить»: позиция меню и короткое сообщение. */
+export const GiftInputSchema = z.object({
+  menuItemId: z.string().min(1).max(40),
+  note: z.string().trim().max(TEXT_LIMITS.giftNote).optional(),
+});
+/** Принять подарок: «Заберу у стойки» или «Пусть принесут» за столик (номер вводит сам получатель). */
+export const GiftAcceptSchema = z.discriminatedUnion("delivery", [
+  z.object({ delivery: z.literal("pickup") }),
+  z.object({
+    delivery: z.literal("table"),
+    tableNumber: z
+      .string()
+      .trim()
+      .regex(/^[\p{L}\p{N} -]{1,10}$/u),
+  }),
+]);

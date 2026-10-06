@@ -26,7 +26,8 @@
     "admin:grant": "pnpm --filter @ryadom/db run admin grant",
     "admin:revoke": "pnpm --filter @ryadom/db run admin revoke",
     "venues:import": "pnpm --filter @ryadom/venues run import",
-    "venues:suggestions": "pnpm --filter @ryadom/venues run suggestions"
+    "venues:suggestions": "pnpm --filter @ryadom/venues run suggestions",
+    "bot:link": "pnpm --filter @ryadom/bot run link"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

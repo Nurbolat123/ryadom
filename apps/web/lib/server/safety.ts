@@ -1,4 +1,5 @@
 import { prisma, type ReportAction } from "@ryadom/db";
+import { cancelGiftsBetween, cancelGiftsOf, getPaymentProvider } from "@ryadom/gifts";
 import { endPresence, getPresence, publishPresenceEvent, publishUserEvent } from "@ryadom/presence";
 import { ReportInputSchema, RULES } from "@ryadom/shared";
 import type { z } from "zod";
@@ -12,7 +13,7 @@ import { getPhotoStorage } from "./storage";
  * Правило 9: блокировка и жалоба бесплатны и мгновенны.
  * Блокировка навсегда скрывает людей друг от друга везде: список, карточка, фото,
  * входящие, чаты, симпатии, приветы. Заблокированному об этом не сообщается.
- * Ожидающие подарки отменяются с возвратом — на этапе подарков (8).
+ * Ожидающие подарки в обе стороны отменяются с возвратом денег отправителю.
  */
 
 /** Заблокировать или пожаловаться можно на того, кого видишь сейчас или с кем есть переписка. */
@@ -49,6 +50,7 @@ export const blockUser = async (blockerId: string, blockedId: string) => {
       data: { status: "dismissed", answeredAt: new Date() },
     }),
   ]);
+  await cancelGiftsBetween({ db: prisma, payments: getPaymentProvider() }, blockerId, blockedId);
   // Обоим — «обновить всё», без указания, кто кого.
   await Promise.all([
     publishUserEvent(redis, { type: "refresh", userId: blockerId }),
@@ -137,6 +139,12 @@ export const banUser = async (userId: string) => {
   const ended = await endPresence(redis, userId);
   if (ended) await publishPresenceEvent(redis, { type: "left", venueId: ended.venueId, userId });
   await publishUserEvent(redis, { type: "logout", userId });
+  // Его ожидающие подарки отменяются с возвратом; второй стороне — обновить входящие.
+  const closed = await cancelGiftsOf({ db: prisma, payments: getPaymentProvider() }, userId);
+  for (const g of closed) {
+    const other = g.fromUserId === userId ? g.toUserId : g.fromUserId;
+    if (other) await publishUserEvent(redis, { type: "inbox", userId: other });
+  }
 };
 
 /** Снять фото: человек снова проходит фото и селфи-проверку, а пока его не видно в списках. */

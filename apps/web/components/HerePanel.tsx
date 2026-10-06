@@ -21,8 +21,9 @@ export type Person = {
   liked: boolean;
   helloSent: boolean;
   chatId: string | null;
+  giftSent: boolean;
 };
-type Venue = { id: string; name: string };
+type Venue = { id: string; name: string; isPartner: boolean };
 export type HereCheckin = {
   venue: Venue;
   openToMeet: boolean;
@@ -185,6 +186,7 @@ export function HerePanel({
       {selected ? (
         <PersonCard
           person={selected}
+          canGift={checkin.venue.isPartner}
           onClose={() => setSelected(null)}
           onChanged={() => void loadPeople()}
           onMatch={(chatId) => {

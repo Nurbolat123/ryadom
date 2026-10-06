@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { createServer } from "node:http";
 import type { PrismaClient } from "@ryadom/db";
+import { expireGifts, getPaymentProvider, retryRefunds, type PaymentProvider } from "@ryadom/gifts";
 import {
   getPresence,
   parsePresenceEvent,
@@ -49,6 +50,8 @@ export type RealtimeOptions = {
   corsOrigin: string | string[];
   sweepIntervalMs?: number;
   noticeIntervalMs?: number;
+  /** Возвраты за истёкшие подарки. По умолчанию — из PAYMENT_PROVIDER. */
+  payments?: PaymentProvider;
 };
 
 export const createRealtime = ({
@@ -58,6 +61,7 @@ export const createRealtime = ({
   corsOrigin,
   sweepIntervalMs = 30_000,
   noticeIntervalMs = RULES.noticeTickSeconds * 1000,
+  payments = getPaymentProvider(),
 }: RealtimeOptions) => {
   const http = createServer(async (req, res) => {
     if (req.url === "/health") {
@@ -169,6 +173,11 @@ export const createRealtime = ({
       io.to(venueRoom(venueId)).emit("people:changed");
     }
     await deleteExpiredSympathies(db);
+    // Подарки без ответа 2 часа — expired и возврат денег; обоим обновить входящие.
+    for (const g of await expireGifts({ db, payments })) {
+      for (const u of [g.fromUserId, g.toUserId]) if (u) io.to(userRoom(u)).emit("inbox:changed");
+    }
+    await retryRefunds({ db, payments });
   };
   const timer = setInterval(() => void sweep().catch(() => undefined), sweepIntervalMs);
 

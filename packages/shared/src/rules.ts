@@ -14,6 +14,8 @@ export const RULES = {
   /** Правило 8: лимиты подарков. */
   giftsPerRecipientPerVisit: 1,
   giftsPerSenderPerDay: 3,
+  /** Попыток отправить подарок в час (rate limit поверх дневного лимита). */
+  giftAttemptsPerHour: 20,
   /** Подарок истекает через 2 часа. */
   giftTtlSeconds: 2 * 60 * 60,
   /** Симпатия живёт 24 часа после окончания визита. */
@@ -60,4 +62,5 @@ export const TEXT_LIMITS = {
   superHello: 200,
   message: 2000,
   reportComment: 500,
+  giftNote: 100,
 } as const;

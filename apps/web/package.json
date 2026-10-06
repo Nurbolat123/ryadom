@@ -16,6 +16,7 @@
     "@fontsource-variable/onest": "^5.3.1",
     "@fontsource-variable/unbounded": "^5.3.0",
     "@ryadom/db": "workspace:*",
+    "@ryadom/gifts": "workspace:*",
     "@ryadom/presence": "workspace:*",
     "@ryadom/shared": "workspace:*",
     "@ryadom/venues": "workspace:*",

@@ -7,15 +7,22 @@
     "dev": "dotenv -e ../../.env -- tsx watch src/index.ts",
     "start": "dotenv -e ../../.env -- tsx src/index.ts",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "echo \"bot: тестов пока нет (этап 8)\""
+    "test": "vitest run",
+    "link": "dotenv -e ../../.env -- tsx src/link.ts"
   },
   "dependencies": {
-    "grammy": "^1.33.0"
+    "grammy": "^1.33.0",
+    "@ryadom/db": "workspace:*",
+    "@ryadom/gifts": "workspace:*",
+    "@ryadom/presence": "workspace:*",
+    "ioredis": "^5.4.2"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
     "dotenv-cli": "^8.0.0",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8",
+    "dotenv": "^16.4.7"
   }
 }

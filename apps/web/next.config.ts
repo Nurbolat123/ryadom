@@ -5,7 +5,13 @@ const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
 const nextConfig: NextConfig = {
   // Пакеты монорепо поставляются как TypeScript-исходники.
-  transpilePackages: ["@ryadom/shared", "@ryadom/db", "@ryadom/venues", "@ryadom/presence"],
+  transpilePackages: [
+    "@ryadom/shared",
+    "@ryadom/db",
+    "@ryadom/venues",
+    "@ryadom/presence",
+    "@ryadom/gifts",
+  ],
   // Не генерировать AGENTS.md/CLAUDE.md внутри apps/web: правила проекта в корневом CLAUDE.md.
   agentRules: false,
   // Режим разработки через GitHub Codespaces: сайт открыт с адреса *.app.github.dev.

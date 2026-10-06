@@ -26,13 +26,28 @@ importers:
 
   apps/bot:
     dependencies:
+      '@ryadom/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@ryadom/gifts':
+        specifier: workspace:*
+        version: link:../../packages/gifts
+      '@ryadom/presence':
+        specifier: workspace:*
+        version: link:../../packages/presence
       grammy:
         specifier: ^1.33.0
         version: 1.46.0
+      ioredis:
+        specifier: ^5.4.2
+        version: 5.11.1
     devDependencies:
       '@types/node':
         specifier: ^22.10.2
         version: 22.20.5
+      dotenv:
+        specifier: ^16.4.7
+        version: 16.6.1
       dotenv-cli:
         specifier: ^8.0.0
         version: 8.0.0
@@ -42,12 +57,18 @@ importers:
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.5)
 
   apps/realtime:
     dependencies:
       '@ryadom/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@ryadom/gifts':
+        specifier: workspace:*
+        version: link:../../packages/gifts
       '@ryadom/presence':
         specifier: workspace:*
         version: link:../../packages/presence
@@ -100,6 +121,9 @@ importers:
       '@ryadom/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@ryadom/gifts':
+        specifier: workspace:*
+        version: link:../../packages/gifts
       '@ryadom/presence':
         specifier: workspace:*
         version: link:../../packages/presence
@@ -186,6 +210,31 @@ importers:
       tsx:
         specifier: ^4.19.2
         version: 4.23.15
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.5)
+
+  packages/gifts:
+    dependencies:
+      '@ryadom/db':
+        specifier: workspace:*
+        version: link:../db
+      '@ryadom/shared':
+        specifier: workspace:*
+        version: link:../shared
+      ioredis:
+        specifier: ^5.4.2
+        version: 5.11.1
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.20.5
+      dotenv:
+        specifier: ^16.4.7
+        version: 16.6.1
       typescript:
         specifier: ^5.7.2
         version: 5.9.3

@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRealtime } from "@/lib/client/realtime";
 import { api } from "./api";
 import { ErrorText } from "./ErrorText";
+import { GiftsInbox, type ReceivedGift, type SentGift } from "./GiftsInbox";
 import { SafetySheet } from "./SafetySheet";
 import social from "./social.module.css";
 import ui from "./ui.module.css";
@@ -34,16 +35,22 @@ export function InboxView() {
   const [hellos, setHellos] = useState<Hello[] | null>(null);
   const [notices, setNotices] = useState<Notice[]>([]);
   const [chats, setChats] = useState<ChatSummary[]>([]);
+  const [gifts, setGifts] = useState<{ received: ReceivedGift[]; sent: SentGift[] }>({
+    received: [],
+    sent: [],
+  });
   const [replying, setReplying] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [safety, setSafety] = useState<{ id: string; name: string } | null>(null);
 
   const load = useCallback(async () => {
-    const [box, list] = await Promise.all([
+    const [box, list, giftList] = await Promise.all([
       api<{ hellos: Hello[]; notices: Notice[] }>("/api/inbox"),
       api<{ chats: ChatSummary[] }>("/api/chats"),
+      api<{ received: ReceivedGift[]; sent: SentGift[] }>("/api/gifts"),
     ]);
+    if (giftList.ok) setGifts(giftList.data);
     if (box.ok) {
       setHellos(box.data.hellos);
       setNotices(box.data.notices);
@@ -91,7 +98,11 @@ export function InboxView() {
         </section>
       ))}
 
-      {hellos === null ? null : hellos.length === 0 && notices.length === 0 ? (
+      <GiftsInbox received={gifts.received} sent={gifts.sent} onChanged={() => void load()} />
+
+      {hellos === null ? null : hellos.length === 0 &&
+        notices.length === 0 &&
+        gifts.received.length === 0 ? (
         <p className={ui.hint}>{t("empty")}</p>
       ) : (
         <ul className={`${styles.people} ${social.section}`}>

@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "./api";
 import styles from "./checkin.module.css";
 import { ErrorText } from "./ErrorText";
+import { GiftSheet } from "./GiftSheet";
 import { HelloSheet } from "./HelloSheet";
 import { SafetySheet } from "./SafetySheet";
 import type { Person } from "./HerePanel";
@@ -14,16 +15,19 @@ import ui from "./ui.module.css";
 
 /**
  * Карточка человека: фото, имя, возраст, о себе, интересы (общие выделены);
- * «Симпатия» (сердечко) и «Привет». «Угостить» — на этапе подарков.
+ * «Симпатия» (сердечко), «Привет» и «Угостить» (только в заведениях-партнёрах).
  */
 export function PersonCard({
   person,
+  canGift,
   onClose,
   onChanged,
   onMatch,
   onBlocked,
 }: {
   person: Person;
+  /** Заведение — партнёр с меню. */
+  canGift: boolean;
   onClose: () => void;
   onChanged: () => void;
   onMatch: (chatId: string) => void;
@@ -37,6 +41,7 @@ export function PersonCard({
   const [liked, setLiked] = useState(person.liked);
   const [helloOpen, setHelloOpen] = useState(false);
   const [safetyOpen, setSafetyOpen] = useState(false);
+  const [giftOpen, setGiftOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,10 +50,10 @@ export function PersonCard({
   useEffect(() => {
     closeRef.current?.focus();
     const onKey = (e: KeyboardEvent) =>
-      e.key === "Escape" && !helloOpen && !safetyOpen && onClose();
+      e.key === "Escape" && !helloOpen && !safetyOpen && !giftOpen && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose, helloOpen, safetyOpen]);
+  }, [onClose, helloOpen, safetyOpen, giftOpen]);
 
   const toggleLike = async () => {
     setBusy(true);
@@ -80,6 +85,10 @@ export function PersonCard({
         }}
       />
     );
+  }
+
+  if (giftOpen) {
+    return <GiftSheet person={person} onClose={() => setGiftOpen(false)} onSent={onChanged} />;
   }
 
   if (safetyOpen) {
@@ -148,6 +157,16 @@ export function PersonCard({
             </button>
           </div>
         )}
+        {canGift ? (
+          <button
+            type="button"
+            className={`${ui.button} ${ui.secondary}`}
+            onClick={() => setGiftOpen(true)}
+            disabled={person.giftSent}
+          >
+            {person.giftSent ? tc("giftSent") : tc("gift")}
+          </button>
+        ) : null}
         {liked && !person.chatId ? <p className={ui.note}>{tc("likedHint")}</p> : null}
         <ErrorText code={error} />
         <button ref={closeRef} className={`${ui.button} ${ui.secondary}`} onClick={onClose}>

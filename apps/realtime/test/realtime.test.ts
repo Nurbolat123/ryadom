@@ -11,12 +11,15 @@ import { presenceKeys, realtimeTicketKey } from "@ryadom/shared";
 import { Redis } from "ioredis";
 import { io as connect, type Socket } from "socket.io-client";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { StubPaymentProvider } from "@ryadom/gifts";
 import { createRealtime } from "../src/server";
 
 const db = createPrismaClient();
 const redis = new Redis(process.env.REDIS_URL!);
+const payments = new StubPaymentProvider();
 const rt = createRealtime({
   db,
+  payments,
   redis,
   sub: new Redis(process.env.REDIS_URL!),
   corsOrigin: "*",
@@ -195,6 +198,35 @@ describe("realtime", () => {
     await publishUserEvent(redis, { type: "logout", userId: c.id });
     expect(await closed).toBe("io server disconnect");
     expect(sa.connected).toBe(true);
+  });
+
+  it("подарок без ответа 2 часа: очистка закрывает его с возвратом и обновляет входящие обоим", async () => {
+    const [a, b] = await Promise.all([mkUser(), mkUser()]);
+    const venue = await db.venue.findUniqueOrThrow({ where: { slug: "teplyi-ugol" } });
+    const item = await db.menuItem.findFirstOrThrow({
+      where: { venueId: venue.id, giftable: true },
+    });
+    const gift = await db.gift.create({
+      data: {
+        fromUserId: a.id,
+        toUserId: b.id,
+        venueId: venue.id,
+        menuItemId: item.id,
+        amount: item.price,
+        commission: 0,
+        paymentId: `test_${randomUUID()}`,
+        expiresAt: new Date(Date.now() - 1000),
+      },
+    });
+    const [sa, sb] = await Promise.all([open(a.token), open(b.token)]);
+    const both = Promise.all([once(sa, "inbox:changed"), once(sb, "inbox:changed")]);
+    await rt.sweep();
+    await both;
+    const after = await db.gift.findUniqueOrThrow({ where: { id: gift.id } });
+    expect(after.status).toBe("expired");
+    expect(after.refundedAt).not.toBeNull();
+    expect(payments.refunds.has(gift.paymentId!)).toBe(true);
+    await db.gift.delete({ where: { id: gift.id } });
   });
 
   it("истечение TTL: очистка завершает присутствие и обновляет список", async () => {
