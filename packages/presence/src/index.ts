@@ -1,4 +1,4 @@
-import { newPresence, presenceKeys, PresenceSchema, type Presence } from "@ryadom/shared";
+import { newPresence, presenceKeys, PresenceSchema, RULES, type Presence } from "@ryadom/shared";
 import type { Redis } from "ioredis";
 
 /**
@@ -135,4 +135,67 @@ export const parsePresenceEvent = (raw: string): PresenceEvent | null => {
   } catch {
     return null;
   }
+};
+
+/**
+ * Личные события пользователя: веб-API публикует, realtime шлёт в комнату user:<id>.
+ * Только тип и id чата — без имён, текстов и признаков отправителя симпатии.
+ */
+export const USER_CHANNEL = "ryadom:user";
+
+export type UserEvent =
+  /** Взаимная симпатия: обоим сразу, с id нового чата. */
+  | { type: "match"; userId: string; chatId: string }
+  /** Входящие изменились (новый привет или анонимное уведомление). */
+  | { type: "inbox"; userId: string }
+  /** В чате новое сообщение или изменение (ответ на привет, обмен контактами). */
+  | { type: "chat"; userId: string; chatId: string };
+
+export const publishUserEvent = (redis: Redis, event: UserEvent) =>
+  redis.publish(USER_CHANNEL, JSON.stringify(event));
+
+export const parseUserEvent = (raw: string): UserEvent | null => {
+  try {
+    const e = JSON.parse(raw) as UserEvent;
+    if (!e.userId) return null;
+    if (e.type === "inbox") return { type: "inbox", userId: e.userId };
+    if ((e.type === "match" || e.type === "chat") && e.chatId)
+      return { type: e.type, userId: e.userId, chatId: e.chatId };
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Очередь анонимных уведомлений о симпатии (правило 5).
+ * Элемент — пара «получатель:заведение»: несколько симпатий подряд в одном заведении
+ * дают одно уведомление (ZADD NX не сдвигает уже запланированное).
+ * Время отправки — сейчас + случайно 1–10 минут, чтобы по времени нельзя было вычислить отправителя.
+ */
+export const NOTICE_QUEUE_KEY = "notice:queue";
+
+export const noticeDelayMs = (random = Math.random) => {
+  const { min, max } = RULES.anonymousNoticeDelaySeconds;
+  return Math.round((min + random() * (max - min)) * 1000);
+};
+
+export const scheduleNotice = (
+  redis: Redis,
+  toUserId: string,
+  venueId: string,
+  now = Date.now(),
+  random = Math.random,
+) => redis.zadd(NOTICE_QUEUE_KEY, "NX", now + noticeDelayMs(random), `${toUserId}:${venueId}`);
+
+/** Забрать наступившие элементы очереди (атомарно, чтобы два процесса не отправили дважды). */
+export const takeDueNotices = async (redis: Redis, now = Date.now()) => {
+  const due = await redis.zrangebyscore(NOTICE_QUEUE_KEY, "-inf", now);
+  const taken: { toUserId: string; venueId: string }[] = [];
+  for (const member of due) {
+    if ((await redis.zrem(NOTICE_QUEUE_KEY, member)) !== 1) continue;
+    const [toUserId, venueId] = member.split(":");
+    if (toUserId && venueId) taken.push({ toUserId, venueId });
+  }
+  return taken;
 };

@@ -6,6 +6,24 @@ import { io, type Socket } from "socket.io-client";
 const HEARTBEAT_MS = 30_000;
 
 /**
+ * Одно подключение к realtime-сервису на вкладку, общее для всех компонентов.
+ * Сервер шлёт только сигналы без данных о людях:
+ * - people:changed — список в заведении изменился;
+ * - presence:ended — отметка закончилась;
+ * - match {chatId} — взаимная симпатия;
+ * - inbox:changed — новый привет или анонимное уведомление;
+ * - chat:changed {chatId} — новое сообщение или обмен контактами.
+ * Сами данные приходят через веб-API, где проверяются права.
+ */
+export type RealtimeHandlers = {
+  onPeopleChanged: () => void;
+  onEnded: () => void;
+  onMatch: (chatId: string) => void;
+  onInbox: () => void;
+  onChat: (chatId: string) => void;
+};
+
+/**
  * Куда подключаться. Если NEXT_PUBLIC_REALTIME_URL пуст или открыт не localhost
  * (например, GitHub Codespaces, где наружу виден только порт сайта), — через адрес сайта:
  * Next проксирует /socket.io в realtime-сервис.
@@ -26,15 +44,43 @@ const withTicket = (cb: (data: object) => void) => {
     .catch(() => cb({}));
 };
 
-/**
- * Подключение к realtime-сервису, пока ты отмечен(а) в заведении.
- * Сервер шлёт только сигналы без данных: «список изменился» и «отметка закончилась».
- * Сам список приходит через веб-API, где проверяются права.
- */
-export function usePresenceSocket(
-  active: boolean,
-  handlers: { onPeopleChanged: () => void; onEnded: () => void },
-) {
+const listeners = new Set<{ current: Partial<RealtimeHandlers> }>();
+const each = (fn: (h: Partial<RealtimeHandlers>) => void) =>
+  listeners.forEach((l) => fn(l.current));
+
+let socket: Socket | null = null;
+let timer: ReturnType<typeof setInterval> | null = null;
+
+const connect = () => {
+  const { url, transports } = realtimeTarget();
+  const opts = { auth: withTicket, withCredentials: true, transports };
+  const s = url ? io(url, opts) : io(opts);
+  s.on("people:changed", () => each((h) => h.onPeopleChanged?.()));
+  s.on("presence:ended", () => each((h) => h.onEnded?.()));
+  s.on("match", (e: { chatId: string }) => each((h) => h.onMatch?.(e.chatId)));
+  s.on("inbox:changed", () => each((h) => h.onInbox?.()));
+  s.on("chat:changed", (e: { chatId: string }) => each((h) => h.onChat?.(e.chatId)));
+  // После переподключения могли пропустить сигналы — обновляем всё.
+  s.io.on("reconnect", () =>
+    each((h) => {
+      h.onPeopleChanged?.();
+      h.onInbox?.();
+    }),
+  );
+  timer = setInterval(() => {
+    if (!s.connected) return;
+    s.timeout(10_000)
+      .emitWithAck("heartbeat")
+      .then((r: { present: boolean }) => {
+        if (!r.present) each((h) => h.onEnded?.());
+      })
+      .catch(() => undefined);
+  }, HEARTBEAT_MS);
+  return s;
+};
+
+/** Подписаться на сигналы realtime, пока компонент на экране. */
+export function useRealtime(handlers: Partial<RealtimeHandlers>, active = true) {
   const ref = useRef(handlers);
   useEffect(() => {
     ref.current = handlers;
@@ -42,28 +88,15 @@ export function usePresenceSocket(
 
   useEffect(() => {
     if (!active) return;
-    const { url, transports } = realtimeTarget();
-    const opts = { auth: withTicket, withCredentials: true, transports };
-    const socket: Socket = url ? io(url, opts) : io(opts);
-    socket.on("people:changed", () => ref.current.onPeopleChanged());
-    socket.on("presence:ended", () => ref.current.onEnded());
-    // После переподключения могли пропустить сигналы — обновляем список.
-    socket.io.on("reconnect", () => ref.current.onPeopleChanged());
-
-    const beat = () => {
-      if (!socket.connected) return;
-      socket
-        .timeout(10_000)
-        .emitWithAck("heartbeat")
-        .then((r: { present: boolean }) => {
-          if (!r.present) ref.current.onEnded();
-        })
-        .catch(() => undefined);
-    };
-    const timer = setInterval(beat, HEARTBEAT_MS);
+    listeners.add(ref);
+    socket ??= connect();
     return () => {
-      clearInterval(timer);
-      socket.disconnect();
+      listeners.delete(ref);
+      if (listeners.size === 0 && socket) {
+        if (timer) clearInterval(timer);
+        socket.disconnect();
+        socket = null;
+      }
     };
   }, [active]);
 }

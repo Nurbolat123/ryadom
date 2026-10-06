@@ -4,13 +4,17 @@ import type { PrismaClient } from "@ryadom/db";
 import {
   getPresence,
   parsePresenceEvent,
+  parseUserEvent,
   PRESENCE_CHANNEL,
   sweepExpired,
+  USER_CHANNEL,
   type PresenceEvent,
+  type UserEvent,
 } from "@ryadom/presence";
-import { realtimeTicketKey } from "@ryadom/shared";
+import { realtimeTicketKey, RULES } from "@ryadom/shared";
 import type { Redis } from "ioredis";
 import { Server, type Socket } from "socket.io";
+import { deleteExpiredSympathies, processNotices } from "./notices";
 
 /**
  * Realtime-сервис «Рядом».
@@ -44,6 +48,7 @@ export type RealtimeOptions = {
   sub: Redis;
   corsOrigin: string | string[];
   sweepIntervalMs?: number;
+  noticeIntervalMs?: number;
 };
 
 export const createRealtime = ({
@@ -52,6 +57,7 @@ export const createRealtime = ({
   sub,
   corsOrigin,
   sweepIntervalMs = 30_000,
+  noticeIntervalMs = RULES.noticeTickSeconds * 1000,
 }: RealtimeOptions) => {
   const http = createServer(async (req, res) => {
     if (req.url === "/health") {
@@ -126,10 +132,23 @@ export const createRealtime = ({
     io.to(venueRoom(e.venueId)).emit("people:changed");
   };
 
+  // Личные события: только тип и id чата, без данных о людях.
+  const onUserEvent = (e: UserEvent) => {
+    const room = io.to(userRoom(e.userId));
+    if (e.type === "match") room.emit("match", { chatId: e.chatId });
+    else if (e.type === "chat") room.emit("chat:changed", { chatId: e.chatId });
+    else room.emit("inbox:changed");
+  };
+
   sub
-    .subscribe(PRESENCE_CHANNEL)
+    .subscribe(PRESENCE_CHANNEL, USER_CHANNEL)
     .catch((err: Error) => console.error("realtime: подписка не удалась", err.message));
   sub.on("message", (channel, raw) => {
+    if (channel === USER_CHANNEL) {
+      const e = parseUserEvent(raw);
+      if (e) onUserEvent(e);
+      return;
+    }
     if (channel !== PRESENCE_CHANNEL) return;
     const e = parsePresenceEvent(raw);
     if (e) void onEvent(e);
@@ -144,16 +163,29 @@ export const createRealtime = ({
       }
       io.to(venueRoom(venueId)).emit("people:changed");
     }
+    await deleteExpiredSympathies(db);
   };
   const timer = setInterval(() => void sweep().catch(() => undefined), sweepIntervalMs);
+
+  // Анонимные уведомления о симпатии: очередь с задержкой 1–10 минут (правило 5).
+  const notices = (now?: number) =>
+    processNotices({
+      db,
+      redis,
+      now,
+      notify: (userId) => io.to(userRoom(userId)).emit("inbox:changed"),
+    });
+  const noticeTimer = setInterval(() => void notices().catch(() => undefined), noticeIntervalMs);
 
   return {
     http,
     io,
     sweep,
+    notices,
     close: async () => {
       clearInterval(timer);
-      await sub.unsubscribe(PRESENCE_CHANNEL).catch(() => undefined);
+      clearInterval(noticeTimer);
+      await sub.unsubscribe(PRESENCE_CHANNEL, USER_CHANNEL).catch(() => undefined);
       await new Promise<void>((r) => io.close(() => r()));
     },
   };

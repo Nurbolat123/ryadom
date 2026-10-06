@@ -1,7 +1,12 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import type { AddressInfo } from "node:net";
 import { createPrismaClient } from "@ryadom/db";
-import { endPresence, publishPresenceEvent, startPresence } from "@ryadom/presence";
+import {
+  endPresence,
+  publishPresenceEvent,
+  publishUserEvent,
+  startPresence,
+} from "@ryadom/presence";
 import { presenceKeys, realtimeTicketKey } from "@ryadom/shared";
 import { Redis } from "ioredis";
 import { io as connect, type Socket } from "socket.io-client";
@@ -157,6 +162,20 @@ describe("realtime", () => {
     const quiet = silent(sa, "people:changed");
     await publishPresenceEvent(redis, { type: "open", venueId: venue, userId: b.id });
     expect(await quiet).toBe(true);
+  });
+
+  it("личные события уходят только адресату и без данных о людях", async () => {
+    const [a, c] = await Promise.all([mkUser(), mkUser()]);
+    const [sa, sc] = await Promise.all([open(a.token), open(c.token)]);
+    const got = once<unknown>(sa, "match");
+    const quiet = silent(sc, "match");
+    await publishUserEvent(redis, { type: "match", userId: a.id, chatId: "chat1" });
+    expect(await got).toEqual({ chatId: "chat1" });
+    expect(await quiet).toBe(true);
+
+    const inbox = once<unknown>(sc, "inbox:changed");
+    await publishUserEvent(redis, { type: "inbox", userId: c.id });
+    expect(await inbox).toBeUndefined();
   });
 
   it("истечение TTL: очистка завершает присутствие и обновляет список", async () => {

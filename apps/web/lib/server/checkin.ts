@@ -115,11 +115,19 @@ const closeOpenVisits = async (userId: string, now = new Date()) => {
     where: { userId, endedAt: null },
     select: { id: true, startedAt: true },
   });
+  let ended: Date | null = null;
   for (const v of open) {
     const maxEnd = new Date(v.startedAt.getTime() + RULES.presenceTtlSeconds * 1000);
-    await prisma.visit.update({
-      where: { id: v.id },
-      data: { endedAt: maxEnd < now ? maxEnd : now },
+    const endedAt = maxEnd < now ? maxEnd : now;
+    await prisma.visit.update({ where: { id: v.id }, data: { endedAt } });
+    if (!ended || endedAt < ended) ended = endedAt;
+  }
+  // Симпатии живут 24 часа после окончания визита.
+  if (ended) {
+    const until = new Date(ended.getTime() + RULES.sympathyTtlAfterVisitSeconds * 1000);
+    await prisma.sympathy.updateMany({
+      where: { fromUserId: userId, expiresAt: { gt: until } },
+      data: { expiresAt: until },
     });
   }
 };

@@ -80,6 +80,10 @@ enum OfferPlacement {
   event_of_day
 }
 
+enum NoticeKind {
+  sympathy_anonymous
+}
+
 enum HelloStatus {
   pending
   replied
@@ -182,6 +186,7 @@ model User {
   blocksGot         Block[]           @relation("BlockOf")
   reportsMade       Report[]          @relation("ReportBy")
   sessions          Session[]
+  notices           Notice[]
   reportsGot        Report[]          @relation("ReportOf")
 }
 
@@ -266,6 +271,7 @@ model Venue {
   sympathies  Sympathy[]
   matches     Match[]
   hellos      Hello[]
+  notices     Notice[]
   gifts       Gift[]
   suggestions VenueSuggestion[]
   reports     Report[]
@@ -470,6 +476,22 @@ model Hello {
 
   @@unique([fromUserId, toUserId])
   @@index([toUserId, status, isSuper, createdAt])
+}
+
+/// Анонимное уведомление «Кому-то в этом заведении вы понравились» (правило 5).
+/// Ни отправителя, ни ссылки на симпатию здесь нет — только получатель и заведение.
+model Notice {
+  id        String     @id @default(cuid())
+  userId    String
+  venueId   String
+  kind      NoticeKind @default(sympathy_anonymous)
+  createdAt DateTime   @default(now())
+  readAt    DateTime?
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
 
 /// Чат открывается после взаимной симпатии или ответа на привет.

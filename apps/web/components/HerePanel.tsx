@@ -2,10 +2,11 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { usePresenceSocket } from "@/lib/client/realtime";
+import { useRealtime } from "@/lib/client/realtime";
 import { api } from "./api";
 import styles from "./checkin.module.css";
 import { ErrorText } from "./ErrorText";
+import { announceMatch } from "./MatchOverlay";
 import { PersonCard } from "./PersonCard";
 import ui from "./ui.module.css";
 
@@ -17,6 +18,9 @@ export type Person = {
   photoUrl: string;
   interests: { id: string; name: string; common: boolean }[];
   common: string[];
+  liked: boolean;
+  helloSent: boolean;
+  chatId: string | null;
 };
 type Venue = { id: string; name: string };
 export type HereCheckin = {
@@ -82,7 +86,7 @@ export function HerePanel({
     void loadPeople();
   }, [loadPeople]);
 
-  usePresenceSocket(true, {
+  useRealtime({
     onPeopleChanged: () => {
       void loadPeople();
       void onRefresh();
@@ -178,7 +182,18 @@ export function HerePanel({
         {tc("leave")}
       </button>
 
-      {selected ? <PersonCard person={selected} onClose={() => setSelected(null)} /> : null}
+      {selected ? (
+        <PersonCard
+          person={selected}
+          onClose={() => setSelected(null)}
+          onChanged={() => void loadPeople()}
+          onMatch={(chatId) => {
+            setSelected(null);
+            void loadPeople();
+            announceMatch(chatId);
+          }}
+        />
+      ) : null}
     </>
   );
 }

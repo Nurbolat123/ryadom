@@ -14,6 +14,11 @@ export const LatLngSchema = z.object({
 export const AboutSchema = z.string().trim().max(TEXT_LIMITS.about);
 export const HelloMessageSchema = z.string().trim().min(1).max(TEXT_LIMITS.hello);
 export const SuperHelloMessageSchema = z.string().trim().min(1).max(TEXT_LIMITS.superHello);
+export const HelloInputSchema = z.discriminatedUnion("isSuper", [
+  z.object({ isSuper: z.literal(false), message: HelloMessageSchema }),
+  z.object({ isSuper: z.literal(true), message: SuperHelloMessageSchema }),
+]);
+export const ChatMessageSchema = z.string().trim().min(1).max(TEXT_LIMITS.message);
 
 /** Публичное представление заведения. Без координат и геозоны (правило 4 — точки не уходят клиенту). */
 export const PublicVenueSchema = z.object({

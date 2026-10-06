@@ -15,7 +15,7 @@ export default async function Home() {
   if (path !== "/home") redirect(path);
   const t = await getTranslations("home");
   return (
-    <Screen right={<LogoutButton label={t("logout")} />}>
+    <Screen nav right={<LogoutButton label={t("logout")} />}>
       <CheckinPanel />
     </Screen>
   );

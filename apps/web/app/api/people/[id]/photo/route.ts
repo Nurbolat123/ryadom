@@ -1,17 +1,24 @@
 import { prisma } from "@ryadom/db";
 import { fail } from "@/lib/server/http";
+import { hasConversation } from "@/lib/server/chat";
 import { canSeePerson } from "@/lib/server/people";
+import { isBlockedBetween } from "@/lib/server/social";
 import { getSession } from "@/lib/server/session";
 import { getPhotoStorage } from "@/lib/server/storage";
 
 export const dynamic = "force-dynamic";
 
-/** Фото человека — по тем же правилам, что и список (только внутри заведения). */
+/** Фото человека: в заведении — по правилам списка; иначе — только тем, с кем есть переписка. */
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session?.user) return fail(401, "unauthorized");
   const { id } = await params;
-  if (!(await canSeePerson(session.user.id, id))) return fail(404, "not_found");
+  // В заведении — по правилам списка; вне его — только собеседник по чату или автор привета тебе.
+  const viewer = session.user.id;
+  const allowed =
+    (await canSeePerson(viewer, id)) ||
+    (id !== viewer && (await hasConversation(viewer, id)) && !(await isBlockedBetween(viewer, id)));
+  if (!allowed) return fail(404, "not_found");
   const user = await prisma.user.findUnique({
     where: { id },
     select: { photo: true, verifiedAt: true },

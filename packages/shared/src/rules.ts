@@ -39,6 +39,15 @@ export const RULES = {
   otpPerIpPerHour: 20,
   /** Если человеку нет 18, номер блокируется для регистрации на 30 дней. */
   underageBlockSeconds: 30 * 24 * 60 * 60,
+  /** Приветов в день с «Плюс» (точные лимиты тарифов — этап 9). */
+  plusHellosPerDay: 30,
+  /** Суперприветов при регистрации. */
+  freeSuperHellosOnSignup: 1,
+  /** Rate limits: симпатии и сообщения чата. */
+  sympathiesPerHour: 60,
+  messagesPerMinute: 30,
+  /** Как часто realtime проверяет очередь анонимных уведомлений. */
+  noticeTickSeconds: 15,
   /** Интересов на человека. */
   maxInterestsPerUser: 10,
 } as const;
@@ -47,4 +56,5 @@ export const TEXT_LIMITS = {
   about: 120,
   hello: 100,
   superHello: 200,
+  message: 2000,
 } as const;

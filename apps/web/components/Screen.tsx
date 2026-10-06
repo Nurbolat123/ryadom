@@ -1,8 +1,18 @@
 import type { ReactNode } from "react";
+import { AppNav } from "./AppNav";
 import { Logo } from "./Logo";
 import styles from "./ui.module.css";
 
-export function Screen({ children, right }: { children: ReactNode; right?: ReactNode }) {
+export function Screen({
+  children,
+  right,
+  nav = false,
+}: {
+  children: ReactNode;
+  right?: ReactNode;
+  /** Нижняя навигация — на основных экранах после входа. */
+  nav?: boolean;
+}) {
   return (
     <main className={styles.screen}>
       <header className={styles.header}>
@@ -10,6 +20,7 @@ export function Screen({ children, right }: { children: ReactNode; right?: React
         {right}
       </header>
       {children}
+      {nav ? <AppNav /> : null}
     </main>
   );
 }

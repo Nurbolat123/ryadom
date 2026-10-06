@@ -2,6 +2,7 @@ import { prisma } from "@ryadom/db";
 import { getPresence, publishPresenceEvent, setOpenToMeet } from "@ryadom/presence";
 import { ageOn, presenceKeys, todayIn, type Presence } from "@ryadom/shared";
 import { redis } from "../redis";
+import { track } from "./analytics";
 
 /**
  * Список людей в заведении. Видят его только те, кто сейчас отмечен в этом заведении (правило 1)
@@ -20,6 +21,12 @@ export type Person = {
   interests: PersonInterest[];
   /** «У вас общее: …» */
   common: string[];
+  /** Ты поставил(а) сердечко (видно только тебе). */
+  liked: boolean;
+  /** Ты уже отправил(а) привет — повторно нельзя (правило 6). Ответ «Не сейчас» не раскрывается. */
+  helloSent: boolean;
+  /** Уже есть чат (взаимность или ответ на привет). */
+  chatId: string | null;
 };
 
 export type PeopleResult =
@@ -50,7 +57,8 @@ const loadPeople = async (viewerId: string, ids: string[], locale: "ru" | "kk") 
   const blocked = await blockedWith(viewerId, ids);
   const visible = ids.filter((id) => id !== viewerId && !blocked.has(id));
   if (!visible.length) return [];
-  const [users, mine] = await Promise.all([
+  const now = new Date();
+  const [users, mine, liked, hellos, chats] = await Promise.all([
     prisma.user.findMany({
       where: { id: { in: visible }, verifiedAt: { not: null }, photo: { not: null } },
       select: {
@@ -66,7 +74,34 @@ const loadPeople = async (viewerId: string, ids: string[], locale: "ru" | "kk") 
       },
     }),
     prisma.userInterest.findMany({ where: { userId: viewerId }, select: { interestId: true } }),
+    // Только свои исходящие: входящие симпатии никогда не попадают в ответ (правило 5).
+    prisma.sympathy.findMany({
+      where: {
+        fromUserId: viewerId,
+        toUserId: { in: visible },
+        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+      },
+      select: { toUserId: true },
+    }),
+    prisma.hello.findMany({
+      where: { fromUserId: viewerId, toUserId: { in: visible } },
+      select: { toUserId: true },
+    }),
+    prisma.chat.findMany({
+      where: {
+        OR: [
+          { userAId: viewerId, userBId: { in: visible } },
+          { userBId: viewerId, userAId: { in: visible } },
+        ],
+      },
+      select: { id: true, userAId: true, userBId: true },
+    }),
   ]);
+  const likedSet = new Set(liked.map((l) => l.toUserId));
+  const helloSet = new Set(hellos.map((h) => h.toUserId));
+  const chatWith = new Map(
+    chats.map((c) => [c.userAId === viewerId ? c.userBId : c.userAId, c.id]),
+  );
   const myInterests = new Set(mine.map((m) => m.interestId));
   const today = todayIn();
   const order = new Map(visible.map((id, i) => [id, i]));
@@ -90,6 +125,9 @@ const loadPeople = async (viewerId: string, ids: string[], locale: "ru" | "kk") 
         photoUrl: `/api/people/${u.id}/photo`,
         interests,
         common: interests.filter((i) => i.common).map((i) => i.name),
+        liked: likedSet.has(u.id),
+        helloSent: helloSet.has(u.id),
+        chatId: chatWith.get(u.id) ?? null,
       };
     })
     .sort((a, b) => b.common.length - a.common.length || order.get(a.id)! - order.get(b.id)!);
@@ -132,18 +170,6 @@ export const toggleOpen = async (userId: string, open: boolean) => {
   const p = await setOpenToMeet(redis, userId, open);
   if (!p) return null;
   await publishPresenceEvent(redis, { type: open ? "open" : "closed", venueId: p.venueId, userId });
-  if (open) {
-    const venue = await prisma.venue.findUnique({
-      where: { id: p.venueId },
-      select: { timezone: true },
-    });
-    await prisma.analyticsEvent.create({
-      data: {
-        type: "open_to_meet_on",
-        venueId: p.venueId,
-        day: new Date(`${todayIn(venue?.timezone)}T00:00:00Z`),
-      },
-    });
-  }
+  if (open) await track("open_to_meet_on", p.venueId);
   return p;
 };

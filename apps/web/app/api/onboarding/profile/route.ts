@@ -1,5 +1,5 @@
 import { prisma } from "@ryadom/db";
-import { isAdult, ProfileInputSchema } from "@ryadom/shared";
+import { isAdult, ProfileInputSchema, RULES } from "@ryadom/shared";
 import { cookies } from "next/headers";
 import { blockUnderage, isUnderageBlocked } from "@/lib/server/age-block";
 import { fail, readJson } from "@/lib/server/http";
@@ -36,6 +36,8 @@ export async function POST(req: Request) {
       displayName,
       locale,
       countryCode: "KZ",
+      // 1 бесплатный суперпривет при регистрации.
+      entitlement: { create: { superHellos: RULES.freeSuperHellosOnSignup } },
     },
     update: {},
   });
