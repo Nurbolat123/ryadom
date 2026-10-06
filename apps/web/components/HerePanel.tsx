@@ -192,6 +192,10 @@ export function HerePanel({
             void loadPeople();
             announceMatch(chatId);
           }}
+          onBlocked={() => {
+            setSelected(null);
+            void loadPeople();
+          }}
         />
       ) : null}
     </>

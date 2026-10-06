@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRealtime } from "@/lib/client/realtime";
 import { api } from "./api";
 import { ErrorText } from "./ErrorText";
+import { SafetySheet } from "./SafetySheet";
 import social from "./social.module.css";
 import ui from "./ui.module.css";
 import styles from "./checkin.module.css";
@@ -28,6 +29,7 @@ type ChatSummary = {
 /** Входящие: суперприветы сверху, приветы, анонимные уведомления, затем чаты. */
 export function InboxView() {
   const t = useTranslations("inbox");
+  const tSafety = useTranslations("safety");
   const router = useRouter();
   const [hellos, setHellos] = useState<Hello[] | null>(null);
   const [notices, setNotices] = useState<Notice[]>([]);
@@ -35,6 +37,7 @@ export function InboxView() {
   const [replying, setReplying] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [safety, setSafety] = useState<{ id: string; name: string } | null>(null);
 
   const load = useCallback(async () => {
     const [box, list] = await Promise.all([
@@ -145,6 +148,13 @@ export function InboxView() {
                   </button>
                 </div>
               )}
+              <button
+                type="button"
+                className={social.safetyLink}
+                onClick={() => setSafety({ id: h.from.id, name: h.from.name })}
+              >
+                {tSafety("open")}
+              </button>
             </li>
           ))}
         </ul>
@@ -180,6 +190,17 @@ export function InboxView() {
           ))}
         </ul>
       )}
+
+      {safety ? (
+        <SafetySheet
+          target={safety}
+          onClose={() => setSafety(null)}
+          onDone={() => {
+            setSafety(null);
+            void load();
+          }}
+        />
+      ) : null}
     </div>
   );
 }

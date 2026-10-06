@@ -149,7 +149,11 @@ export type UserEvent =
   /** Входящие изменились (новый привет или анонимное уведомление). */
   | { type: "inbox"; userId: string }
   /** В чате новое сообщение или изменение (ответ на привет, обмен контактами). */
-  | { type: "chat"; userId: string; chatId: string };
+  | { type: "chat"; userId: string; chatId: string }
+  /** Блокировка: обновить всё (список, входящие, чаты). Кто и кого — не передаётся. */
+  | { type: "refresh"; userId: string }
+  /** Аккаунт заблокирован модератором: закрыть подключения. */
+  | { type: "logout"; userId: string };
 
 export const publishUserEvent = (redis: Redis, event: UserEvent) =>
   redis.publish(USER_CHANNEL, JSON.stringify(event));
@@ -158,7 +162,8 @@ export const parseUserEvent = (raw: string): UserEvent | null => {
   try {
     const e = JSON.parse(raw) as UserEvent;
     if (!e.userId) return null;
-    if (e.type === "inbox") return { type: "inbox", userId: e.userId };
+    if (e.type === "inbox" || e.type === "refresh" || e.type === "logout")
+      return { type: e.type, userId: e.userId };
     if ((e.type === "match" || e.type === "chat") && e.chatId)
       return { type: e.type, userId: e.userId, chatId: e.chatId };
     return null;

@@ -40,7 +40,7 @@ export const getSession = async (): Promise<CurrentSession | null> => {
     include: { user: true },
   });
   if (!session) return null;
-  if (session.expiresAt < new Date()) {
+  if (session.expiresAt < new Date() || session.user?.bannedAt) {
     await prisma.session.delete({ where: { id: session.id } }).catch(() => undefined);
     return null;
   }

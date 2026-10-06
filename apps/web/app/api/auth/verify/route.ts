@@ -20,8 +20,10 @@ export async function POST(req: Request) {
 
   const user = await prisma.user.findUnique({
     where: { phone },
-    select: { id: true, locale: true },
+    select: { id: true, locale: true, bannedAt: true },
   });
+  // Аккаунт закрыт модератором — вход и повторная регистрация на этот номер невозможны.
+  if (user?.bannedAt) return fail(403, "banned");
   await startSession(user ? { userId: user.id } : { phone });
   if (user) (await cookies()).set("locale", user.locale, { path: "/", maxAge: 365 * 24 * 3600 });
 

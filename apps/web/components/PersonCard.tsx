@@ -7,6 +7,7 @@ import { api } from "./api";
 import styles from "./checkin.module.css";
 import { ErrorText } from "./ErrorText";
 import { HelloSheet } from "./HelloSheet";
+import { SafetySheet } from "./SafetySheet";
 import type { Person } from "./HerePanel";
 import social from "./social.module.css";
 import ui from "./ui.module.css";
@@ -20,17 +21,22 @@ export function PersonCard({
   onClose,
   onChanged,
   onMatch,
+  onBlocked,
 }: {
   person: Person;
   onClose: () => void;
   onChanged: () => void;
   onMatch: (chatId: string) => void;
+  /** Человек заблокирован: карточку закрыть, список обновить. */
+  onBlocked: () => void;
 }) {
   const t = useTranslations("here");
   const tc = useTranslations("card");
+  const tSafety = useTranslations("safety");
   const closeRef = useRef<HTMLButtonElement>(null);
   const [liked, setLiked] = useState(person.liked);
   const [helloOpen, setHelloOpen] = useState(false);
+  const [safetyOpen, setSafetyOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,10 +44,11 @@ export function PersonCard({
 
   useEffect(() => {
     closeRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !helloOpen && onClose();
+    const onKey = (e: KeyboardEvent) =>
+      e.key === "Escape" && !helloOpen && !safetyOpen && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose, helloOpen]);
+  }, [onClose, helloOpen, safetyOpen]);
 
   const toggleLike = async () => {
     setBusy(true);
@@ -71,6 +78,16 @@ export function PersonCard({
           setHelloOpen(false);
           onChanged();
         }}
+      />
+    );
+  }
+
+  if (safetyOpen) {
+    return (
+      <SafetySheet
+        target={{ id: person.id, name: person.name }}
+        onClose={() => setSafetyOpen(false)}
+        onDone={(blocked) => (blocked ? onBlocked() : setSafetyOpen(false))}
       />
     );
   }
@@ -135,6 +152,9 @@ export function PersonCard({
         <ErrorText code={error} />
         <button ref={closeRef} className={`${ui.button} ${ui.secondary}`} onClick={onClose}>
           {t("close")}
+        </button>
+        <button type="button" className={social.safetyLink} onClick={() => setSafetyOpen(true)}>
+          {tSafety("open")}
         </button>
       </div>
     </div>

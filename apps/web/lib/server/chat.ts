@@ -26,6 +26,11 @@ const chatFor = async (
   if (!chat || (chat.userAId !== userId && chat.userBId !== userId)) return null;
   const otherId = chat.userAId === userId ? chat.userBId : chat.userAId;
   if (await isBlockedBetween(userId, otherId)) return null;
+  const other = await prisma.user.findUnique({
+    where: { id: otherId },
+    select: { bannedAt: true },
+  });
+  if (!other || other.bannedAt) return null;
   return { ...chat, otherId };
 };
 
@@ -44,8 +49,8 @@ export const listChats = async (userId: string): Promise<ChatSummary[]> => {
       id: true,
       matchId: true,
       createdAt: true,
-      userA: { select: { id: true, displayName: true } },
-      userB: { select: { id: true, displayName: true } },
+      userA: { select: { id: true, displayName: true, bannedAt: true } },
+      userB: { select: { id: true, displayName: true, bannedAt: true } },
       messages: { orderBy: { createdAt: "desc" }, take: 1 },
     },
   });
@@ -84,9 +89,10 @@ export const listChats = async (userId: string): Promise<ChatSummary[]> => {
           fromMatch: !!c.matchId,
         },
         otherId: other.id,
+        hidden: !!other.bannedAt,
       };
     })
-    .filter((c) => !blocked.has(c.otherId))
+    .filter((c) => !blocked.has(c.otherId) && !c.hidden)
     .sort((a, b) => b.sortAt - a.sortAt)
     .map((c) => c.summary);
 };
@@ -165,9 +171,10 @@ export const confirmContacts = async (userId: string, chatId: string) => {
 /** Есть ли у пары чат или привет от target к viewer — тогда можно показать фото вне заведения. */
 export const hasConversation = async (viewerId: string, targetId: string) => {
   const [a, b] = viewerId < targetId ? [viewerId, targetId] : [targetId, viewerId];
-  const [chat, hello] = await Promise.all([
+  const [chat, hello, target] = await Promise.all([
     prisma.chat.count({ where: { userAId: a, userBId: b } }),
     prisma.hello.count({ where: { fromUserId: targetId, toUserId: viewerId } }),
+    prisma.user.findUnique({ where: { id: targetId }, select: { bannedAt: true } }),
   ]);
-  return chat + hello > 0;
+  return !!target && !target.bannedAt && chat + hello > 0;
 };

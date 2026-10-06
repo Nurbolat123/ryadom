@@ -60,7 +60,12 @@ const loadPeople = async (viewerId: string, ids: string[], locale: "ru" | "kk") 
   const now = new Date();
   const [users, mine, liked, hellos, chats] = await Promise.all([
     prisma.user.findMany({
-      where: { id: { in: visible }, verifiedAt: { not: null }, photo: { not: null } },
+      where: {
+        id: { in: visible },
+        verifiedAt: { not: null },
+        photo: { not: null },
+        bannedAt: null,
+      },
       select: {
         id: true,
         displayName: true,

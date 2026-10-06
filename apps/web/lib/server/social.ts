@@ -307,7 +307,7 @@ export const inbox = async (userId: string) => {
   const since = new Date(Date.now() - RULES.sympathyTtlAfterVisitSeconds * 1000);
   const [hellos, notices, presence, blocks] = await Promise.all([
     prisma.hello.findMany({
-      where: { toUserId: userId, status: "pending" },
+      where: { toUserId: userId, status: "pending", from: { bannedAt: null } },
       orderBy: [{ isSuper: "desc" }, { createdAt: "desc" }],
       select: {
         id: true,
@@ -357,7 +357,9 @@ export const inbox = async (userId: string) => {
 /** Непрочитанное во входящих — для значка в навигации. */
 export const inboxCount = async (userId: string) => {
   const [hellos, notices] = await Promise.all([
-    prisma.hello.count({ where: { toUserId: userId, status: "pending" } }),
+    prisma.hello.count({
+      where: { toUserId: userId, status: "pending", from: { bannedAt: null } },
+    }),
     prisma.notice.count({ where: { userId, readAt: null } }),
   ]);
   return hellos + notices;

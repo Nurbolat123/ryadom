@@ -117,4 +117,16 @@ describe("анонимное уведомление о симпатии (пра�
     await db.sympathy.delete({ where: { id: s.id } });
     expect(await processNotices({ db, redis, notify: () => undefined, now: LATER() })).toBe(0);
   });
+
+  it("от заблокированного или закрытого модератором — уведомления нет (правило 9)", async () => {
+    const [a, c, d, b] = [await mkUser(), await mkUser(), await mkUser(), await mkUser()];
+    for (const u of [a, c, d, b]) await here(u);
+    await like(a, b);
+    await like(c, b);
+    await db.block.create({ data: { blockerId: b, blockedId: a } });
+    await db.user.update({ where: { id: c }, data: { bannedAt: new Date() } });
+    await scheduleNotice(redis, b, venueId);
+    expect(await processNotices({ db, redis, notify: () => undefined, now: LATER() })).toBe(0);
+    expect(await db.notice.count({ where: { userId: b } })).toBe(0);
+  });
 });

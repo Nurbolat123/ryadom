@@ -23,6 +23,8 @@
     "db:seed": "pnpm --filter @ryadom/db seed",
     "db:reset": "pnpm --filter @ryadom/db reset",
     "db:studio": "pnpm --filter @ryadom/db studio",
+    "admin:grant": "pnpm --filter @ryadom/db run admin grant",
+    "admin:revoke": "pnpm --filter @ryadom/db run admin revoke",
     "venues:import": "pnpm --filter @ryadom/venues run import",
     "venues:suggestions": "pnpm --filter @ryadom/venues run suggestions"
   },

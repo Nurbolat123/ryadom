@@ -178,6 +178,25 @@ describe("realtime", () => {
     expect(await inbox).toBeUndefined();
   });
 
+  it("блокировка: refresh обновляет всё без данных; бан: logout закрывает подключение", async () => {
+    const [a, c] = await Promise.all([mkUser(), mkUser()]);
+    const [sa, sc] = await Promise.all([open(a.token), open(c.token)]);
+    const people = once<unknown>(sa, "people:changed");
+    const inbox = once<unknown>(sa, "inbox:changed");
+    const chat = once<unknown>(sa, "chat:changed");
+    const quiet = silent(sc, "inbox:changed");
+    await publishUserEvent(redis, { type: "refresh", userId: a.id });
+    expect(await people).toBeUndefined();
+    expect(await inbox).toBeUndefined();
+    expect(await chat).toEqual({ chatId: "*" });
+    expect(await quiet).toBe(true);
+
+    const closed = once(sc, "disconnect");
+    await publishUserEvent(redis, { type: "logout", userId: c.id });
+    expect(await closed).toBe("io server disconnect");
+    expect(sa.connected).toBe(true);
+  });
+
   it("истечение TTL: очистка завершает присутствие и обновляет список", async () => {
     const venue = randomUUID();
     const [a, b] = await Promise.all([mkUser(), mkUser()]);

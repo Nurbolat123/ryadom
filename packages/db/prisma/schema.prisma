@@ -119,6 +119,20 @@ enum ProductCode {
   super_hello_5
 }
 
+enum UserRole {
+  user
+  admin
+}
+
+enum ReportAction {
+  /// Жалоба не подтвердилась.
+  dismissed
+  /// Фото снято, человек снова проходит фото и селфи-проверку.
+  photo_removed
+  /// Аккаунт заблокирован.
+  banned
+}
+
 enum ReportReason {
   fake_profile
   harassment
@@ -162,6 +176,10 @@ model User {
   countryCode String    @default("KZ") @db.Char(2)
   /// Согласие на предложения по интересам. По умолчанию выключено (правило 14).
   adsConsent  Boolean   @default(false)
+  /// Доступ к админке модерации (выдаётся командой `pnpm admin:grant`).
+  role        UserRole  @default(user)
+  /// Аккаунт заблокирован модератором: вход закрыт, человека нигде не видно.
+  bannedAt    DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -659,6 +677,10 @@ model Report {
   status     ModerationStatus @default(pending)
   createdAt  DateTime         @default(now())
   resolvedAt DateTime?
+  /// Что сделал модератор (null — ещё не рассмотрено).
+  action     ReportAction?
+  /// Кто из модераторов рассмотрел (без связи: запись остаётся, даже если модератора удалят).
+  resolvedById String?
 
   reporter User?  @relation("ReportBy", fields: [reporterId], references: [id], onDelete: SetNull)
   reported User?  @relation("ReportOf", fields: [reportedId], references: [id], onDelete: SetNull)

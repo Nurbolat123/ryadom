@@ -65,3 +65,19 @@ export const ProfileInputSchema = z
     displayName: DisplayNameSchema,
   })
   .strict();
+
+export const REPORT_REASONS = [
+  "fake_profile",
+  "harassment",
+  "underage",
+  "spam",
+  "inappropriate",
+  "other",
+] as const;
+export const ReportInputSchema = z.object({
+  reason: z.enum(REPORT_REASONS),
+  comment: z.string().trim().max(TEXT_LIMITS.reportComment).optional(),
+  /** Пожаловаться и сразу заблокировать (по умолчанию — да). */
+  block: z.boolean().default(true),
+});
+export const MODERATION_ACTIONS = ["dismissed", "photo_removed", "banned"] as const;

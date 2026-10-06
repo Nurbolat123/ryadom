@@ -39,6 +39,8 @@ export const processNotices = async ({
         venueId,
         noticeSentAt: null,
         fromUserId: { notIn: blocked },
+        // Симпатии от закрытых модератором аккаунтов не считаются.
+        from: { bannedAt: null },
         OR: [{ expiresAt: null }, { expiresAt: { gt: new Date(now) } }],
       },
       select: { id: true },

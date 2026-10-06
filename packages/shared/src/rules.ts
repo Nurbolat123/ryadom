@@ -46,6 +46,8 @@ export const RULES = {
   /** Rate limits: симпатии и сообщения чата. */
   sympathiesPerHour: 60,
   messagesPerMinute: 30,
+  /** Жалоб в сутки от одного человека (rate limit). */
+  reportsPerDay: 10,
   /** Как часто realtime проверяет очередь анонимных уведомлений. */
   noticeTickSeconds: 15,
   /** Интересов на человека. */
@@ -57,4 +59,5 @@ export const TEXT_LIMITS = {
   hello: 100,
   superHello: 200,
   message: 2000,
+  reportComment: 500,
 } as const;

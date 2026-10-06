@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useRealtime } from "@/lib/client/realtime";
 import { api } from "./api";
 import styles from "./checkin.module.css";
 import { ErrorText } from "./ErrorText";
+import { SafetySheet } from "./SafetySheet";
 import social from "./social.module.css";
 import ui from "./ui.module.css";
 
@@ -21,6 +23,9 @@ type Chat = {
 /** Чат: сообщения в реальном времени и «Обменяться контактами» (только по взаимному согласию). */
 export function ChatScreen({ id }: { id: string }) {
   const t = useTranslations("chat");
+  const tSafety = useTranslations("safety");
+  const router = useRouter();
+  const [safetyOpen, setSafetyOpen] = useState(false);
   const [chat, setChat] = useState<Chat | null>(null);
   const [missing, setMissing] = useState(false);
   const [text, setText] = useState("");
@@ -38,7 +43,7 @@ export function ChatScreen({ id }: { id: string }) {
     void load();
   }, [load]);
   useEffect(() => bottom.current?.scrollIntoView({ block: "end" }), [chat?.messages.length]);
-  useRealtime({ onChat: (chatId) => chatId === id && void load() });
+  useRealtime({ onChat: (chatId) => (chatId === id || chatId === "*") && void load() });
   // Открытый чат отмечает сообщения прочитанными — обновить значок.
   useEffect(() => {
     window.dispatchEvent(new Event("ryadom:badges"));
@@ -84,6 +89,16 @@ export function ChatScreen({ id }: { id: string }) {
         <img className={styles.avatar} src={chat.other.photoUrl} alt="" width={48} height={48} />
         <h1 className={social.itemName}>{chat.other.name}</h1>
       </header>
+      <button type="button" className={social.safetyLink} onClick={() => setSafetyOpen(true)}>
+        {tSafety("open")}
+      </button>
+      {safetyOpen ? (
+        <SafetySheet
+          target={{ id: chat.other.id, name: chat.other.name }}
+          onClose={() => setSafetyOpen(false)}
+          onDone={(blocked) => (blocked ? router.replace("/inbox") : setSafetyOpen(false))}
+        />
+      ) : null}
 
       {chat.fromMatch ? <p className={styles.count}>{t("matchHint")}</p> : null}
 

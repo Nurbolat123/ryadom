@@ -137,6 +137,11 @@ export const createRealtime = ({
     const room = io.to(userRoom(e.userId));
     if (e.type === "match") room.emit("match", { chatId: e.chatId });
     else if (e.type === "chat") room.emit("chat:changed", { chatId: e.chatId });
+    else if (e.type === "refresh") {
+      room.emit("people:changed");
+      room.emit("inbox:changed");
+      room.emit("chat:changed", { chatId: "*" });
+    } else if (e.type === "logout") io.in(userRoom(e.userId)).disconnectSockets(true);
     else room.emit("inbox:changed");
   };
 
