@@ -97,6 +97,35 @@ describe("вход по телефону", () => {
     expect(sent.at(-1)!.code).toMatch(/^\d{6}$/);
   });
 
+  it("код на экране — только с заглушкой SMS и не в продакшене", async () => {
+    const console_ = new ConsoleSmsProvider();
+    vi.spyOn(console, "info").mockImplementation(() => undefined);
+    setSmsProvider(console_);
+    try {
+      const phone = randomPhone();
+      createdPhones.push(phone);
+      const body = (await (await requestCode(json({ phone }))).json()) as { devCode?: string };
+      expect(body.devCode).toMatch(/^\d{6}$/);
+
+      vi.stubEnv("NODE_ENV", "production");
+      const other = randomPhone();
+      createdPhones.push(other);
+      const prod = (await (await requestCode(json({ phone: other }))).json()) as {
+        devCode?: string;
+      };
+      expect(prod.devCode).toBeUndefined();
+    } finally {
+      vi.unstubAllEnvs();
+      vi.restoreAllMocks();
+      setSmsProvider({ sendCode: async (phone, code) => void sent.push({ phone, code }) });
+    }
+
+    // С настоящим провайдером кода в ответе нет.
+    const phone = randomPhone();
+    createdPhones.push(phone);
+    expect(await (await requestCode(json({ phone }))).json()).not.toHaveProperty("devCode");
+  });
+
   it("неверный номер — 400", async () => {
     expect((await requestCode(json({ phone: "12345" }))).status).toBe(400);
   });

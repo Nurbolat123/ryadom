@@ -15,5 +15,10 @@ export async function POST(req: Request) {
   if (!res.ok) {
     return fail(429, res.error, { retryAfterSec: res.retryAfterSec });
   }
-  return Response.json({ ok: true, phone, resendAfterSec: res.resendAfterSec });
+  return Response.json({
+    ok: true,
+    phone,
+    resendAfterSec: res.resendAfterSec,
+    devCode: res.devCode,
+  });
 }

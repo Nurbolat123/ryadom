@@ -3,10 +3,10 @@ import { RULES } from "@ryadom/shared";
 import { redis } from "../redis";
 import { rateLimit } from "../rate-limit";
 import { phoneKey, sha256 } from "./hash";
-import { getSmsProvider } from "./sms";
+import { ConsoleSmsProvider, getSmsProvider } from "./sms";
 
 export type RequestCodeResult =
-  | { ok: true; resendAfterSec: number }
+  | { ok: true; resendAfterSec: number; devCode?: string }
   | { ok: false; error: "cooldown" | "rate_limited"; retryAfterSec: number };
 
 const codeKey = (phone: string) => `otp:code:${phoneKey(phone)}`;
@@ -30,8 +30,12 @@ export const requestLoginCode = async (phone: string, ip: string): Promise<Reque
     .expire(codeKey(phone), RULES.otpTtlSeconds)
     .set(cooldownKey(phone), "1", "EX", RULES.otpResendCooldownSeconds)
     .exec();
-  await getSmsProvider().sendCode(phone, code);
-  return { ok: true, resendAfterSec: RULES.otpResendCooldownSeconds };
+  const sms = getSmsProvider();
+  await sms.sendCode(phone, code);
+  // Режим разработки без SMS: код показываем прямо на экране (в продакшене — никогда).
+  const devCode =
+    sms instanceof ConsoleSmsProvider && process.env.NODE_ENV !== "production" ? code : undefined;
+  return { ok: true, resendAfterSec: RULES.otpResendCooldownSeconds, devCode };
 };
 
 export type VerifyCodeResult =

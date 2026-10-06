@@ -263,3 +263,17 @@
   padding: 12px 0 calc(8px + env(safe-area-inset-bottom));
   background: linear-gradient(to bottom, transparent, var(--bg) 30%);
 }
+
+/* Подсказка с кодом входа — только в режиме разработки без SMS. */
+.devCode {
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: 1.5px dashed var(--border);
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}

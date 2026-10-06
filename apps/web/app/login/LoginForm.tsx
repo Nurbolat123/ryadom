@@ -18,6 +18,7 @@ export function LoginForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<{ code: string; seconds?: number } | null>(null);
   const [resendIn, setResendIn] = useState(0);
+  const [devCode, setDevCode] = useState<string | null>(null);
 
   useEffect(() => {
     if (resendIn <= 0) return;
@@ -29,9 +30,12 @@ export function LoginForm() {
     e?.preventDefault();
     setBusy(true);
     setError(null);
-    const res = await api<{ phone: string; resendAfterSec: number }>("/api/auth/code", {
-      json: { phone },
-    });
+    const res = await api<{ phone: string; resendAfterSec: number; devCode?: string }>(
+      "/api/auth/code",
+      {
+        json: { phone },
+      },
+    );
     setBusy(false);
     if (!res.ok) {
       setError({ code: res.error, seconds: res.retryAfterSec });
@@ -40,6 +44,7 @@ export function LoginForm() {
     }
     setSentTo(res.data.phone);
     setResendIn(res.data.resendAfterSec);
+    setDevCode(res.data.devCode ?? null);
     setCode("");
   };
 
@@ -93,6 +98,11 @@ export function LoginForm() {
       <form className={ui.body} onSubmit={verify}>
         <h1 className={ui.title}>{t("codeTitle")}</h1>
         <p className={ui.hint}>{t("codeSentTo", { phone: sentTo })}</p>
+        {devCode ? (
+          <button type="button" className={ui.devCode} onClick={() => setCode(devCode)}>
+            {t("devCode", { code: devCode })}
+          </button>
+        ) : null}
         <label className={ui.field}>
           <span className={ui.visuallyHidden}>{t("codeLabel")}</span>
           <input
