@@ -1,0 +1,22 @@
+{
+  // GitHub Codespaces / Dev Containers: Node 22 + pnpm, база и Redis через docker compose.
+  "name": "Рядом",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "hostRequirements": { "cpus": 4, "memory": "8gb" },
+  // Наружу только сайт; realtime браузер достаёт через тот же адрес (/socket.io проксируется в :4000).
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": { "label": "web", "onAutoForward": "openBrowser" },
+    "4000": { "label": "realtime", "onAutoForward": "ignore" }
+  },
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  "postStartCommand": "docker compose up -d --wait postgres redis",
+  "customizations": {
+    "vscode": {
+      "extensions": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode", "Prisma.prisma"]
+    }
+  }
+}

@@ -1,0 +1,265 @@
+.screen {
+  min-height: 100dvh;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 16px 20px calc(24px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+}
+
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.logoWord {
+  font-family: "Unbounded Variable", "Geologica Variable", system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.8px;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.title {
+  font-size: 26px;
+}
+
+.hint {
+  color: var(--text-2);
+  margin: 0;
+}
+
+.body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.button {
+  min-height: var(--button);
+  border-radius: var(--radius-pill);
+  border: 0;
+  padding: 0 24px;
+  font: inherit;
+  font-weight: 700;
+  font-size: 17px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  width: 100%;
+}
+
+.primary {
+  background: var(--coral);
+  color: #fff;
+}
+
+.primary:active {
+  background: #b23b18;
+}
+
+.secondary {
+  background: transparent;
+  color: var(--text);
+  border: 1.5px solid var(--border);
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  text-decoration: none;
+  background: none;
+  border: 0;
+  color: var(--coral-light);
+  font: inherit;
+  font-weight: 600;
+  min-height: 44px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.button:disabled,
+.link:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-2);
+}
+
+.input {
+  min-height: var(--control);
+  border-radius: 14px;
+  border: 1.5px solid var(--border);
+  background: var(--field);
+  color: var(--text);
+  font: inherit;
+  font-size: 18px;
+  padding: 0 16px;
+  width: 100%;
+}
+
+.input:focus {
+  border-color: var(--coral);
+  outline: none;
+}
+
+.code {
+  letter-spacing: 8px;
+  font-size: 26px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.error {
+  color: var(--danger);
+  margin: 0;
+  font-weight: 600;
+}
+
+.note {
+  color: var(--text-2);
+  font-size: 14px;
+  margin: 0;
+}
+
+.card {
+  background: var(--card);
+  border-radius: var(--radius-card);
+  padding: 20px;
+}
+
+.progress {
+  display: flex;
+  gap: 6px;
+}
+
+.progress span {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+}
+
+.progress span[data-done="true"] {
+  background: var(--coral);
+}
+
+.segmented {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.choice {
+  min-height: var(--button);
+  border-radius: 16px;
+  border: 1.5px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.choice[aria-pressed="true"] {
+  border-color: var(--coral);
+  background: var(--warm);
+  color: var(--night);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chip[aria-pressed="true"] {
+  background: var(--coral);
+  border-color: var(--coral);
+  color: #fff;
+}
+
+.photo {
+  /* Фото не выталкивает кнопку за край экрана на невысоких телефонах. */
+  width: min(100%, 36dvh);
+  margin: 0 auto;
+  aspect-ratio: 4 / 5;
+  border-radius: 24px;
+  background: var(--card);
+  border: 1.5px dashed var(--border);
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+
+.photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photoRound {
+  width: 220px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  margin: 0 auto;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+/* Кнопка внизу экрана остаётся видимой при длинном списке (интересы). */
+.stickyBottom {
+  position: sticky;
+  bottom: 0;
+  padding: 12px 0 calc(8px + env(safe-area-inset-bottom));
+  background: linear-gradient(to bottom, transparent, var(--bg) 30%);
+}

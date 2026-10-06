@@ -1,0 +1,662 @@
+// Модель данных «Рядом» — по разделу «Модель данных» в CLAUDE.md.
+//
+// Важно:
+// - Presence (кто сейчас в заведении) живёт только в Redis, см. packages/shared/src/presence.ts.
+// - Координаты и геозоны заведений — PostGIS-колонки (geography). Prisma их не читает,
+//   работа с ними только через packages/db/src/geo.ts. Точки пользователей не сохраняются (правило 4).
+// - Ограничения, которые Prisma не умеет выражать (CHECK, частичные индексы, GiST),
+//   дописаны вручную в миграции 0001_init.
+// - Суммы — Int в минимальных единицах валюты (тиыны): 490 ₸ = 49000.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ───────────────────────── Enum-ы (синхронно с packages/shared/src/enums.ts) ─────────────────────────
+
+enum Gender {
+  male
+  female
+  other
+}
+
+enum Locale {
+  ru
+  kk
+}
+
+enum VenueCategory {
+  cafe
+  coffee
+  bar
+  restaurant
+  coworking
+  event
+  other
+}
+
+enum VenueSourceKind {
+  seed
+  osm
+  dgis
+  user
+  admin
+}
+
+/// Откуда геозона: контур здания из источника, круг 35 м или поправлена вручную в админке.
+/// Ручную геозону импорт не перезаписывает.
+enum GeofenceKind {
+  building
+  circle
+  manual
+}
+
+enum ImportStatus {
+  running
+  success
+  failed
+}
+
+enum ModerationStatus {
+  pending
+  approved
+  rejected
+}
+
+enum OfferType {
+  discount
+  event
+  promo
+}
+
+enum OfferPlacement {
+  badge
+  promo_card
+  event_of_day
+}
+
+enum HelloStatus {
+  pending
+  replied
+  dismissed
+}
+
+enum GiftStatus {
+  pending
+  accepted
+  redeemed
+  declined
+  expired
+}
+
+enum GiftDelivery {
+  pickup
+  table
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  failed
+  refunded
+}
+
+enum ProductCode {
+  plus_evening
+  plus_week
+  plus_month
+  plus_3months
+  super_hello_1
+  super_hello_5
+}
+
+enum ReportReason {
+  fake_profile
+  harassment
+  underage
+  spam
+  inappropriate
+  other
+}
+
+enum AnalyticsEventType {
+  app_open
+  registered
+  checkin
+  open_to_meet_on
+  sympathy_sent
+  hello_sent
+  super_hello_sent
+  gift_sent
+  match
+  hello_replied
+  gift_accepted
+  gift_redeemed
+}
+
+// ───────────────────────── Пользователи ─────────────────────────
+
+model User {
+  id          String    @id @default(cuid())
+  /// E.164, например +77011234567. Не пишется в логи.
+  phone       String    @unique
+  birthDate   DateTime  @db.Date
+  gender      Gender
+  displayName String    @db.VarChar(40)
+  /// До 120 символов (CHECK в миграции).
+  about       String?   @db.VarChar(120)
+  /// Ключ объекта в S3 (фото уже без EXIF).
+  photo       String?
+  /// Селфи-проверка пройдена. Без неё человек не показывается в списках (правило 10).
+  verifiedAt  DateTime?
+  locale      Locale    @default(ru)
+  countryCode String    @default("KZ") @db.Char(2)
+  /// Согласие на предложения по интересам. По умолчанию выключено (правило 14).
+  adsConsent  Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  interests         UserInterest[]
+  visits            Visit[]
+  venueSuggestions  VenueSuggestion[]
+  sympathiesSent    Sympathy[]        @relation("SympathyFrom")
+  sympathiesGot     Sympathy[]        @relation("SympathyTo")
+  matchesA          Match[]           @relation("MatchUserA")
+  matchesB          Match[]           @relation("MatchUserB")
+  hellosSent        Hello[]           @relation("HelloFrom")
+  hellosGot         Hello[]           @relation("HelloTo")
+  chatsA            Chat[]            @relation("ChatUserA")
+  chatsB            Chat[]            @relation("ChatUserB")
+  messages          Message[]
+  contactExchanges  ContactExchange[]
+  purchases         Purchase[]
+  entitlement       Entitlement?
+  giftsSent         Gift[]            @relation("GiftFrom")
+  giftsGot          Gift[]            @relation("GiftTo")
+  blocksMade        Block[]           @relation("BlockBy")
+  blocksGot         Block[]           @relation("BlockOf")
+  reportsMade       Report[]          @relation("ReportBy")
+  sessions          Session[]
+  reportsGot        Report[]          @relation("ReportOf")
+}
+
+/// Сессия входа. В cookie лежит случайный токен, в базе — только его SHA-256.
+/// До завершения регистрации userId пуст, а подтверждённый телефон хранится в самой сессии.
+model Session {
+  id         String   @id @default(cuid())
+  tokenHash  String   @unique
+  userId     String?
+  /// Подтверждённый кодом телефон — только пока User ещё не создан.
+  phone      String?
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+  lastSeenAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// Справочник интересов на двух языках.
+model Interest {
+  id        String  @id @default(cuid())
+  slug      String  @unique
+  nameRu    String
+  nameKk    String
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
+
+  users UserInterest[]
+}
+
+/// До 10 интересов на человека — проверяется в API (RULES.maxInterestsPerUser).
+model UserInterest {
+  userId     String
+  interestId String
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  interest Interest @relation(fields: [interestId], references: [id], onDelete: Cascade)
+
+  @@id([userId, interestId])
+  @@index([interestId])
+}
+
+// ───────────────────────── Заведения ─────────────────────────
+
+model Venue {
+  id             String          @id @default(cuid())
+  slug           String          @unique
+  name           String
+  category       VenueCategory
+  address        String?
+  city           String
+  /// Точка заведения, geography(Point, 4326). Обязательна (CHECK в миграции). Клиенту не отдаётся.
+  location       Unsupported("geography(Point, 4326)")?
+  /// Геозона, geography(Polygon, 4326): контур здания из OSM или круг 35 м.
+  geofence       Unsupported("geography(Polygon, 4326)")?
+  geofenceKind   GeofenceKind    @default(circle)
+  timezone       String          @default("Asia/Almaty")
+  source         VenueSourceKind
+  /// Идентификатор во внешнем источнике (например, "node/123456" в OSM).
+  sourceId       String?
+  /// Когда импорт последний раз видел место в источнике. Пропавшие помечаются isActive = false.
+  lastSeenAt     DateTime?
+  isPartner      Boolean         @default(false)
+  /// Чат персонала в Telegram (строкой: id бывают за пределами int32).
+  telegramChatId String?
+  isActive       Boolean         @default(true)
+  /// Комиссия платформы, %. Если null — берётся PLATFORM_COMMISSION_PCT.
+  commissionPct  Decimal?        @db.Decimal(5, 2)
+  /// Максимальная стоимость подарка, в тиынах. Если null — DEFAULT_MAX_GIFT_AMOUNT.
+  maxGiftAmount  Int?
+  currency       String          @default("KZT") @db.Char(3)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  menuItems   MenuItem[]
+  offers      Offer[]
+  visits      Visit[]
+  statsHourly VenueStatsHourly[]
+  sympathies  Sympathy[]
+  matches     Match[]
+  hellos      Hello[]
+  gifts       Gift[]
+  suggestions VenueSuggestion[]
+  reports     Report[]
+
+  @@unique([source, sourceId])
+  @@index([geofence], map: "Venue_geofence_gist", type: Gist)
+  @@index([location], map: "Venue_location_gist", type: Gist)
+  @@index([city, isActive])
+  @@index([isPartner])
+}
+
+/// Журнал запусков импорта заведений (для админки и отладки).
+model VenueImportRun {
+  id          String          @id @default(cuid())
+  source      VenueSourceKind
+  city        String
+  status      ImportStatus    @default(running)
+  startedAt   DateTime        @default(now())
+  finishedAt  DateTime?
+  fetched     Int             @default(0)
+  skipped     Int             @default(0)
+  created     Int             @default(0)
+  updated     Int             @default(0)
+  deactivated Int             @default(0)
+  error       String?
+
+  @@index([source, city, startedAt])
+}
+
+/// «Нет моего заведения» — место появляется после проверки в админке.
+/// Координаты пользователя не сохраняются (правило 4): точку ставит модератор при одобрении.
+model VenueSuggestion {
+  id         String           @id @default(cuid())
+  userId     String?
+  name       String
+  category   VenueCategory?
+  address    String?
+  city       String
+  comment    String?          @db.VarChar(300)
+  status     ModerationStatus @default(pending)
+  /// Заведение, созданное после одобрения.
+  venueId    String?
+  createdAt  DateTime         @default(now())
+  reviewedAt DateTime?
+
+  user  User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  venue Venue? @relation(fields: [venueId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+}
+
+/// Обезличенная активность заведения по часам — только агрегаты, без userId.
+model VenueStatsHourly {
+  venueId       String
+  /// Локальная дата заведения.
+  date          DateTime @db.Date
+  /// Час 0–23 по времени заведения.
+  hour          Int      @db.SmallInt
+  /// Пиковое число открытых к знакомству за час.
+  openPeak      Int      @default(0)
+  checkins      Int      @default(0)
+
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@id([venueId, date, hour])
+}
+
+model MenuItem {
+  id          String   @id @default(cuid())
+  venueId     String
+  name        String
+  nameKk      String?
+  description String?
+  /// В тиынах.
+  price       Int
+  currency    String   @default("KZT") @db.Char(3)
+  /// Алкоголь никогда не бывает giftable (CHECK в миграции, правило 8).
+  isAlcohol   Boolean  @default(false)
+  giftable    Boolean  @default(false)
+  isAvailable Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  venue Venue  @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  gifts Gift[]
+
+  @@index([venueId, giftable, isAvailable])
+}
+
+// ───────────────────────── Предложения заведений ─────────────────────────
+
+model Offer {
+  id          String           @id @default(cuid())
+  venueId     String
+  type        OfferType
+  title       String           @db.VarChar(80)
+  description String?          @db.VarChar(500)
+  startsAt    DateTime
+  endsAt      DateTime
+  placement   OfferPlacement
+  /// Платное размещение — помечается «Реклама».
+  isPaid      Boolean          @default(false)
+  /// Модерация (в том числе запрет рекламы алкоголя).
+  status      ModerationStatus @default(pending)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  venue       Venue             @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  redemptions OfferRedemption[]
+
+  @@index([venueId, status, startsAt, endsAt])
+}
+
+/// Погашение скидки по коду. Без userId — не связано с поведением в знакомствах.
+model OfferRedemption {
+  id         String    @id @default(cuid())
+  offerId    String
+  code       String    @unique
+  createdAt  DateTime  @default(now())
+  redeemedAt DateTime?
+
+  offer Offer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  @@index([offerId])
+}
+
+// ───────────────────────── Визиты и знакомства ─────────────────────────
+
+/// Визит — для аналитики и лимитов. Другим пользователям не показывается.
+model Visit {
+  id        String    @id @default(cuid())
+  userId    String
+  venueId   String
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  venue Venue  @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  gifts Gift[]
+
+  @@index([userId, startedAt])
+  @@index([venueId, startedAt])
+}
+
+/// Симпатия from → to. Анонимна до взаимности (правило 5). Не пишется в логи и аналитику.
+model Sympathy {
+  id         String    @id @default(cuid())
+  fromUserId String
+  toUserId   String
+  venueId    String
+  createdAt  DateTime  @default(now())
+  /// Ставится при окончании визита: +24 часа. Затем запись удаляется.
+  expiresAt  DateTime?
+  /// Когда получателю ушло анонимное уведомление (null — ещё не отправлено).
+  noticeSentAt DateTime?
+
+  from  User  @relation("SympathyFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  to    User  @relation("SympathyTo", fields: [toUserId], references: [id], onDelete: Cascade)
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@unique([fromUserId, toUserId])
+  @@index([toUserId])
+  @@index([expiresAt])
+}
+
+/// Взаимная симпатия. Пара хранится упорядоченно: userAId < userBId (CHECK в миграции).
+model Match {
+  id        String   @id @default(cuid())
+  userAId   String
+  userBId   String
+  venueId   String
+  createdAt DateTime @default(now())
+
+  userA User  @relation("MatchUserA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB User  @relation("MatchUserB", fields: [userBId], references: [id], onDelete: Cascade)
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  chat  Chat?
+
+  @@unique([userAId, userBId])
+  @@index([userBId])
+}
+
+/// Привет / суперпривет. От A к B — один запрос (уникальная пара, правило 6):
+/// повторно нельзя ни после «Не сейчас», ни за деньги.
+model Hello {
+  id         String      @id @default(cuid())
+  fromUserId String
+  toUserId   String
+  venueId    String
+  isSuper    Boolean     @default(false)
+  /// До 100 символов, у суперпривета до 200 (CHECK в миграции).
+  message    String      @db.VarChar(200)
+  status     HelloStatus @default(pending)
+  createdAt  DateTime    @default(now())
+  answeredAt DateTime?
+
+  from  User  @relation("HelloFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  to    User  @relation("HelloTo", fields: [toUserId], references: [id], onDelete: Cascade)
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  chat  Chat?
+
+  @@unique([fromUserId, toUserId])
+  @@index([toUserId, status, isSuper, createdAt])
+}
+
+/// Чат открывается после взаимной симпатии или ответа на привет.
+/// Пара хранится упорядоченно: userAId < userBId.
+model Chat {
+  id        String   @id @default(cuid())
+  userAId   String
+  userBId   String
+  matchId   String?  @unique
+  helloId   String?  @unique
+  createdAt DateTime @default(now())
+
+  userA            User              @relation("ChatUserA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB            User              @relation("ChatUserB", fields: [userBId], references: [id], onDelete: Cascade)
+  match            Match?            @relation(fields: [matchId], references: [id], onDelete: SetNull)
+  hello            Hello?            @relation(fields: [helloId], references: [id], onDelete: SetNull)
+  messages         Message[]
+  contactExchanges ContactExchange[]
+
+  @@unique([userAId, userBId])
+  @@index([userBId])
+}
+
+model Message {
+  id        String    @id @default(cuid())
+  chatId    String
+  senderId  String
+  /// Текст сообщения. Не пишется в логи.
+  body      String    @db.VarChar(2000)
+  createdAt DateTime  @default(now())
+  readAt    DateTime?
+
+  chat   Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  sender User @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([chatId, createdAt])
+}
+
+/// «Обменяться контактами»: строка на каждого, кто нажал.
+/// Контакты открываются, только когда в чате есть подтверждения от обоих (правило 13).
+model ContactExchange {
+  chatId      String
+  userId      String
+  confirmedAt DateTime @default(now())
+
+  chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([chatId, userId])
+}
+
+// ───────────────────────── Покупки ─────────────────────────
+
+/// Цены по странам (Казахстан: 490 / 990 / 1 990 / 4 490 ₸).
+model Price {
+  id          String      @id @default(cuid())
+  countryCode String      @db.Char(2)
+  product     ProductCode
+  /// В минимальных единицах валюты.
+  amount      Int
+  currency    String      @db.Char(3)
+  isActive    Boolean     @default(true)
+
+  @@unique([countryCode, product])
+}
+
+/// Покупка. При удалении аккаунта userId обнуляется — финансовая запись остаётся без ПДн.
+model Purchase {
+  id        String        @id @default(cuid())
+  userId    String?
+  product   ProductCode
+  amount    Int
+  currency  String        @db.Char(3)
+  status    PaymentStatus @default(pending)
+  /// Идентификатор платежа в PaymentProvider.
+  paymentId String?       @unique
+  createdAt DateTime      @default(now())
+  paidAt    DateTime?
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+}
+
+/// Активный «Плюс» и остаток суперприветов.
+model Entitlement {
+  userId           String       @id
+  plusUntil        DateTime?
+  superHellos      Int          @default(0)
+  /// Автопродление только с явного согласия.
+  autoRenew        Boolean      @default(false)
+  autoRenewProduct ProductCode?
+  updatedAt        DateTime     @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ───────────────────────── Подарки ─────────────────────────
+
+/// pending → accepted → redeemed; pending → declined | expired → автоматический возврат.
+/// При удалении аккаунта участники обнуляются — запись нужна для отчёта партнёру.
+model Gift {
+  id          String        @id @default(cuid())
+  fromUserId  String?
+  toUserId    String?
+  venueId     String
+  /// Визит отправителя — для лимита «1 подарок одному человеку за визит».
+  visitId     String?
+  menuItemId  String
+  /// В тиынах.
+  amount      Int
+  commission  Int
+  currency    String        @default("KZT") @db.Char(3)
+  /// Короткое сообщение к подарку.
+  note        String?       @db.VarChar(100)
+  status      GiftStatus    @default(pending)
+  delivery    GiftDelivery?
+  /// Код выдачи у стойки.
+  pickupCode  String?
+  /// Номер столика вводит сам получатель; персоналу уходит только он.
+  tableNumber String?       @db.VarChar(10)
+  paymentId   String?       @unique
+  refundId    String?       @unique
+  createdAt   DateTime      @default(now())
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  redeemedAt  DateTime?
+  declinedAt  DateTime?
+  refundedAt  DateTime?
+
+  from     User?    @relation("GiftFrom", fields: [fromUserId], references: [id], onDelete: SetNull)
+  to       User?    @relation("GiftTo", fields: [toUserId], references: [id], onDelete: SetNull)
+  venue    Venue    @relation(fields: [venueId], references: [id], onDelete: Restrict)
+  visit    Visit?   @relation(fields: [visitId], references: [id], onDelete: SetNull)
+  menuItem MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Restrict)
+
+  @@index([fromUserId, createdAt])
+  @@index([toUserId, status])
+  @@index([venueId, createdAt])
+  @@index([status, expiresAt])
+}
+
+// ───────────────────────── Безопасность ─────────────────────────
+
+/// Блокировка навсегда скрывает людей друг от друга во всех заведениях (правило 9).
+model Block {
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  blocker User @relation("BlockBy", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("BlockOf", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@id([blockerId, blockedId])
+  @@index([blockedId])
+}
+
+model Report {
+  id         String           @id @default(cuid())
+  reporterId String?
+  reportedId String?
+  venueId    String?
+  reason     ReportReason
+  comment    String?          @db.VarChar(500)
+  status     ModerationStatus @default(pending)
+  createdAt  DateTime         @default(now())
+  resolvedAt DateTime?
+
+  reporter User?  @relation("ReportBy", fields: [reporterId], references: [id], onDelete: SetNull)
+  reported User?  @relation("ReportOf", fields: [reportedId], references: [id], onDelete: SetNull)
+  venue    Venue? @relation(fields: [venueId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([reportedId])
+}
+
+// ───────────────────────── Аналитика ─────────────────────────
+
+/// Обезличенное событие воронки: без userId, координат, телефонов и текстов (правило 14).
+model AnalyticsEvent {
+  id        BigInt             @id @default(autoincrement())
+  type      AnalyticsEventType
+  venueId   String?
+  /// Локальная дата заведения — воронка строится по заведению и дню.
+  day       DateTime           @db.Date
+  createdAt DateTime           @default(now())
+
+  @@index([venueId, day, type])
+  @@index([day, type])
+}

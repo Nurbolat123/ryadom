@@ -1,0 +1,130 @@
+/* Тёмный приветственный экран: концентрические круги, знак со свечением. */
+.root {
+  min-height: 100dvh;
+  background: var(--night);
+  color: #f2f3f5;
+  position: relative;
+  overflow: hidden;
+  color-scheme: dark;
+}
+
+.circles {
+  position: absolute;
+  left: 50%;
+  top: 34%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.circles span {
+  position: absolute;
+  border-radius: 50%;
+  border: 1.5px solid rgba(226, 85, 43, 0.16);
+  background: radial-gradient(circle, rgba(201, 68, 29, 0.06), transparent 70%);
+  transform: translate(-50%, -50%);
+}
+
+.content {
+  position: relative;
+  max-width: 480px;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: 16px 20px calc(24px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+}
+
+.top {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.hero {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 18px;
+  padding: 24px 0;
+}
+
+.mark {
+  filter: drop-shadow(0 0 28px rgba(226, 85, 43, 0.55)) drop-shadow(0 0 6px rgba(226, 85, 43, 0.6));
+}
+
+.word {
+  font-family: "Unbounded Variable", "Geologica Variable", system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.8px;
+  font-size: 44px;
+  line-height: 1;
+  color: #fff;
+}
+
+.slogan {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 19px;
+  line-height: 1.35;
+  max-width: 320px;
+  margin: 0;
+  color: var(--warm);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ghost {
+  min-height: var(--button);
+  border-radius: var(--radius-pill);
+  border: 1.5px solid rgba(255, 255, 255, 0.22);
+  color: #fff;
+  background: transparent;
+  font-weight: 700;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  padding: 0 20px;
+  text-align: center;
+}
+
+.trust {
+  margin: 16px 0 0;
+  text-align: center;
+  font-size: 13px;
+  color: rgba(242, 243, 245, 0.62);
+}
+
+.lang {
+  display: inline-flex;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-pill);
+  padding: 3px;
+}
+
+.lang button {
+  min-height: 38px;
+  min-width: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.75);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.lang button[aria-pressed="true"] {
+  background: #fff;
+  color: var(--night);
+}

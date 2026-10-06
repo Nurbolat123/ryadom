@@ -1,0 +1,345 @@
+.hereButton {
+  width: 220px;
+  height: 220px;
+  margin: 8px auto;
+  border-radius: 50%;
+  border: 0;
+  background: var(--coral);
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 26px;
+  cursor: pointer;
+  box-shadow:
+    0 0 0 14px rgba(201, 68, 29, 0.14),
+    0 0 0 30px rgba(201, 68, 29, 0.07);
+  display: grid;
+  place-items: center;
+}
+
+.hereButton:disabled {
+  opacity: 0.7;
+}
+
+.center {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 24px;
+}
+
+.venueList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.venueItem {
+  width: 100%;
+  min-height: 64px;
+  text-align: left;
+  padding: 12px 16px;
+  border-radius: 18px;
+  border: 1.5px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.venueName {
+  font-weight: 700;
+  font-size: 17px;
+}
+
+.venueMeta {
+  color: var(--text-2);
+  font-size: 14px;
+}
+
+.badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--warm);
+  color: var(--coral);
+  font-size: 12px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.here {
+  background: var(--card);
+  border-radius: 24px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hereLabel {
+  color: var(--text-2);
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.hereName {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.count {
+  background: var(--warm);
+  color: var(--night);
+  border-radius: 16px;
+  padding: 12px 14px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.help {
+  background: var(--card);
+  border-radius: 20px;
+  padding: 16px 18px;
+}
+
+.help h2 {
+  font-size: 16px;
+  margin: 12px 0 4px;
+}
+
+.help h2:first-child {
+  margin-top: 0;
+}
+
+.help ol {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--text-2);
+}
+
+.dev {
+  margin-top: auto;
+  border: 1.5px dashed var(--border);
+  border-radius: 14px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--text-2);
+}
+
+.devList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.devList label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 32px;
+}
+
+/* --- Этап 5: «Открыт(а) к знакомству» и список людей --- */
+
+.toggle {
+  width: 100%;
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.toggle[aria-checked="true"] {
+  border-color: var(--coral);
+}
+
+.toggle:disabled {
+  opacity: 0.7;
+}
+
+.toggleText {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toggleTitle {
+  font-weight: 700;
+  font-size: 17px;
+}
+
+.switch {
+  flex: none;
+  width: 52px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--border);
+  position: relative;
+  transition: background 0.15s;
+}
+
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s;
+}
+
+.toggle[aria-checked="true"] .switch {
+  background: var(--coral);
+}
+
+.toggle[aria-checked="true"] .switch::after {
+  transform: translateX(20px);
+}
+
+.people {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.person {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 20px;
+  border: 0;
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.avatar {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  object-fit: cover;
+  background: var(--border);
+}
+
+.personText {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.personName {
+  font-weight: 700;
+  font-size: 17px;
+}
+
+.common {
+  align-self: flex-start;
+  margin: 0;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--common-bg);
+  color: var(--common-fg);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: rgba(21, 23, 28, 0.55);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.sheet {
+  width: min(100%, 480px);
+  max-height: 92dvh;
+  overflow-y: auto;
+  background: var(--bg);
+  border-radius: 24px 24px 0 0;
+  padding: 16px 16px max(16px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cardPhoto {
+  width: min(100%, 42dvh);
+  margin: 0 auto;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  border-radius: 24px;
+  background: var(--border);
+}
+
+.cardName {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.cardAbout {
+  margin: 0;
+}
+
+.interests {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.interest,
+.interestCommon {
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  background: var(--card);
+  border: 1.5px solid var(--border);
+}
+
+.interestCommon {
+  background: var(--common-bg);
+  border-color: var(--common-bg);
+  color: var(--common-fg);
+}

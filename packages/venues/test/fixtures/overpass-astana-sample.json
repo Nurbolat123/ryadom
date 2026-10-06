@@ -1,0 +1,283 @@
+{
+  "version": 0.6,
+  "generator": "fixture",
+  "elements": [
+    {
+      "type": "node",
+      "id": 1001,
+      "lat": 51.1283,
+      "lon": 71.4305,
+      "tags": {
+        "amenity": "cafe",
+        "name": "Кофейня Әже",
+        "addr:street": "Кенесары көшесі",
+        "addr:housenumber": "40"
+      }
+    },
+    {
+      "type": "node",
+      "id": 1002,
+      "lat": 51.1283,
+      "lon": 71.4362256,
+      "tags": {
+        "amenity": "bar",
+        "name": "Daily Bar"
+      }
+    },
+    {
+      "type": "node",
+      "id": 1003,
+      "lat": 51.1283,
+      "lon": 71.4419511,
+      "tags": {
+        "amenity": "restaurant",
+        "name": "Тюбетейка"
+      }
+    },
+    {
+      "type": "way",
+      "id": 3001,
+      "bounds": {
+        "minlat": 51.1282102,
+        "minlon": 71.441808,
+        "maxlat": 51.1284797,
+        "maxlon": 71.4422374
+      },
+      "geometry": [
+        {
+          "lat": 51.1282102,
+          "lon": 71.441808
+        },
+        {
+          "lat": 51.1282102,
+          "lon": 71.4422374
+        },
+        {
+          "lat": 51.1284797,
+          "lon": 71.4422374
+        },
+        {
+          "lat": 51.1284797,
+          "lon": 71.441808
+        },
+        {
+          "lat": 51.1282102,
+          "lon": 71.441808
+        }
+      ],
+      "tags": {
+        "amenity": "restaurant",
+        "name": "Тюбетейка",
+        "building": "yes"
+      }
+    },
+    {
+      "type": "node",
+      "id": 1004,
+      "lat": 51.1283,
+      "lon": 71.4476767,
+      "tags": {
+        "amenity": "cafe"
+      }
+    },
+    {
+      "type": "node",
+      "id": 1005,
+      "lat": 51.1336899,
+      "lon": 71.4305,
+      "tags": {
+        "amenity": "coworking_space",
+        "name": "Astana Hub Cowork"
+      }
+    },
+    {
+      "type": "node",
+      "id": 1006,
+      "lat": 51.1336899,
+      "lon": 71.4362256,
+      "tags": {
+        "amenity": "cafe",
+        "name": "Coffee Boom",
+        "cuisine": "coffee_shop"
+      }
+    },
+    {
+      "type": "relation",
+      "id": 4001,
+      "bounds": {
+        "minlat": 51.1335102,
+        "minlon": 71.4416649,
+        "maxlat": 51.1338695,
+        "maxlon": 71.4422374
+      },
+      "tags": {
+        "amenity": "restaurant",
+        "name": "Ресторан Байтерек",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "type": "way",
+      "id": 3002,
+      "bounds": {
+        "minlat": 51.1125796,
+        "minlon": 71.4054506,
+        "maxlat": 51.1170711,
+        "maxlon": 71.4126076
+      },
+      "geometry": [
+        {
+          "lat": 51.1125796,
+          "lon": 71.4054506
+        },
+        {
+          "lat": 51.1125796,
+          "lon": 71.4126076
+        },
+        {
+          "lat": 51.1170711,
+          "lon": 71.4126076
+        },
+        {
+          "lat": 51.1170711,
+          "lon": 71.4054506
+        },
+        {
+          "lat": 51.1125796,
+          "lon": 71.4054506
+        }
+      ],
+      "tags": {
+        "amenity": "cafe",
+        "name": "Кафе в огромном контуре"
+      }
+    },
+    {
+      "type": "node",
+      "id": 1007,
+      "lat": 51.1336899,
+      "lon": 71.4476767,
+      "tags": {
+        "amenity": "cafe",
+        "name": "Закрытое кафе",
+        "opening_hours": "closed"
+      }
+    },
+    {
+      "type": "node",
+      "id": 1008,
+      "lat": 51.1390797,
+      "lon": 71.4305,
+      "tags": {
+        "office": "coworking",
+        "name": "Workspace Есиль"
+      }
+    },
+    {
+      "type": "way",
+      "id": 2001,
+      "bounds": {
+        "minlat": 51.1281922,
+        "minlon": 71.4303282,
+        "maxlat": 51.1284078,
+        "maxlon": 71.4306718
+      },
+      "geometry": [
+        {
+          "lat": 51.1281922,
+          "lon": 71.4303282
+        },
+        {
+          "lat": 51.1281922,
+          "lon": 71.4306718
+        },
+        {
+          "lat": 51.1284078,
+          "lon": 71.4306718
+        },
+        {
+          "lat": 51.1284078,
+          "lon": 71.4303282
+        },
+        {
+          "lat": 51.1281922,
+          "lon": 71.4303282
+        }
+      ],
+      "tags": {
+        "building": "yes"
+      }
+    },
+    {
+      "type": "way",
+      "id": 2002,
+      "bounds": {
+        "minlat": 51.1276712,
+        "minlon": 71.429498,
+        "maxlat": 51.1289288,
+        "maxlon": 71.431502
+      },
+      "geometry": [
+        {
+          "lat": 51.1276712,
+          "lon": 71.429498
+        },
+        {
+          "lat": 51.1276712,
+          "lon": 71.431502
+        },
+        {
+          "lat": 51.1289288,
+          "lon": 71.431502
+        },
+        {
+          "lat": 51.1289288,
+          "lon": 71.429498
+        },
+        {
+          "lat": 51.1276712,
+          "lon": 71.429498
+        }
+      ],
+      "tags": {
+        "building": "retail",
+        "name": "ТЦ"
+      }
+    },
+    {
+      "type": "way",
+      "id": 2003,
+      "bounds": {
+        "minlat": 51.1336719,
+        "minlon": 71.4304714,
+        "maxlat": 51.1337078,
+        "maxlon": 71.4305286
+      },
+      "geometry": [
+        {
+          "lat": 51.1336719,
+          "lon": 71.4304714
+        },
+        {
+          "lat": 51.1336719,
+          "lon": 71.4305286
+        },
+        {
+          "lat": 51.1337078,
+          "lon": 71.4305286
+        },
+        {
+          "lat": 51.1337078,
+          "lon": 71.4304714
+        },
+        {
+          "lat": 51.1336719,
+          "lon": 71.4304714
+        }
+      ],
+      "tags": {
+        "building": "roof"
+      }
+    }
+  ]
+}

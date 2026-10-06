@@ -1,0 +1,84 @@
+/* Бренд «рядом» — токены из раздела «Бренд» в CLAUDE.md. */
+:root {
+  --coral: #c9441d;
+  --coral-light: #e2552b;
+  --night: #15171c;
+  --warm: #fbe3d9;
+  --common-bg: #dce6fb;
+  --common-fg: #1e3e8f;
+
+  --bg: #f2f3f5;
+  --card: #ffffff;
+  --text: #15171c;
+  --text-2: #5a5f6b;
+  --border: #e1e3e8;
+  --field: #ffffff;
+  --danger: #b3261e;
+
+  --radius-card: 20px;
+  --radius-pill: 999px;
+  --control: 48px;
+  --button: 56px;
+
+  /* Unbounded и Manrope не содержат казахских ә ғ қ ң ұ — для них подключены
+     Geologica и Onest (подставляются браузером только для отсутствующих букв). */
+  --font-display: "Unbounded Variable", "Geologica Variable", system-ui, sans-serif;
+  --font-text: "Manrope Variable", "Onest Variable", system-ui, sans-serif;
+
+  color-scheme: light dark;
+}
+
+/* В казахском интерфейсе — целиком шрифты с полной поддержкой казахского алфавита,
+   чтобы буквы в одном слове не были из разных шрифтов. */
+html[lang="kk"] {
+  --font-display: "Geologica Variable", system-ui, sans-serif;
+  --font-text: "Onest Variable", system-ui, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15171c;
+    --card: #1f2229;
+    --text: #f2f3f5;
+    --text-2: #a3a8b3;
+    --border: #2e323b;
+    --field: #1f2229;
+    --common-bg: #1e3e8f;
+    --common-fg: #dce6fb;
+    --danger: #ff8a80;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-text);
+  font-size: 16px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+h1,
+h2 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+  margin: 0;
+}
+
+a {
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 3px solid var(--coral-light);
+  outline-offset: 2px;
+}
