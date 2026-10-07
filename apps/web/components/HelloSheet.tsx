@@ -2,6 +2,7 @@
 
 import { TEXT_LIMITS } from "@ryadom/shared";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "./api";
 import styles from "./checkin.module.css";
@@ -22,6 +23,7 @@ export function HelloSheet({
 }) {
   const t = useTranslations("helloSheet");
   const tChat = useTranslations("chat");
+  const tPlus = useTranslations("plus");
   const [isSuper, setIsSuper] = useState(false);
   const [message, setMessage] = useState("");
   const [superLeft, setSuperLeft] = useState<number | null>(null);
@@ -109,6 +111,11 @@ export function HelloSheet({
         </label>
         <p className={ui.note}>{t("once")}</p>
         <ErrorText code={error} />
+        {error === "hello_limit" || error === "no_super_hellos" ? (
+          <Link href="/plus" className={ui.link}>
+            {tPlus("more")}
+          </Link>
+        ) : null}
         <button
           className={`${ui.button} ${ui.primary}`}
           onClick={send}

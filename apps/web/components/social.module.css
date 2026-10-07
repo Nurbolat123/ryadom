@@ -475,3 +475,34 @@
 .table th:first-child {
   text-align: left;
 }
+
+.benefits {
+  margin: 0 0 12px;
+  padding-left: 20px;
+  display: grid;
+  gap: 6px;
+  line-height: 1.4;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.plusBadge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  background: var(--warm);
+  color: var(--coral);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.plusLink {
+  align-self: flex-start;
+}

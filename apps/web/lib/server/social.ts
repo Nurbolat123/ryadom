@@ -145,7 +145,7 @@ const startOfLocalDay = (timeZone = "Asia/Almaty") => {
   return new Date(`${day}T00:00:00+05:00`);
 };
 
-const hasPlus = async (userId: string) => {
+export const hasPlus = async (userId: string) => {
   const e = await prisma.entitlement.findUnique({ where: { userId }, select: { plusUntil: true } });
   return !!e?.plusUntil && e.plusUntil > new Date();
 };
@@ -185,15 +185,19 @@ export const sendHello = async (
   }
 
   if (input.isSuper) await ensureEntitlement(fromId);
+  const plus = input.isSuper && (await hasPlus(fromId));
   try {
     const hello = await prisma.$transaction(async (tx) => {
       if (input.isSuper) {
-        // Списываем суперпривет атомарно: условие superHellos > 0 в самом UPDATE.
-        const spent = await tx.entitlement.updateMany({
-          where: { userId: fromId, superHellos: { gt: 0 } },
-          data: { superHellos: { decrement: 1 } },
-        });
-        if (spent.count === 0) throw new NoSuperHellos();
+        // Сначала недельные суперприветы «Плюс», затем купленные. Атомарно: условие в самом UPDATE.
+        const weekly = plus && (await spendWeeklySuper(tx, fromId));
+        if (!weekly) {
+          const spent = await tx.entitlement.updateMany({
+            where: { userId: fromId, superHellos: { gt: 0 } },
+            data: { superHellos: { decrement: 1 } },
+          });
+          if (spent.count === 0) throw new NoSuperHellos();
+        }
       }
       return tx.hello.create({
         data: {
@@ -226,9 +230,35 @@ export const ensureEntitlement = (userId: string) =>
     update: {},
   });
 
-/** Остаток суперприветов. */
-export const superHellosLeft = async (userId: string) =>
-  (await ensureEntitlement(userId)).superHellos;
+/** Понедельник 00:00 по времени Алматы (UTC+5) — начало недели для суперприветов «Плюс». */
+export const weekStart = (now = new Date()) => {
+  const local = new Date(now.getTime() + 5 * 3600_000);
+  const dow = (local.getUTCDay() + 6) % 7;
+  const midnight = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate());
+  return new Date(midnight - dow * 86_400_000 - 5 * 3600_000);
+};
+
+const spendWeeklySuper = async (tx: Prisma.TransactionClient, userId: string) => {
+  const ws = weekStart();
+  await tx.entitlement.updateMany({
+    where: { userId, OR: [{ plusWeekStart: null }, { plusWeekStart: { lt: ws } }] },
+    data: { plusWeekStart: ws, plusSuperUsed: 0 },
+  });
+  const res = await tx.entitlement.updateMany({
+    where: { userId, plusSuperUsed: { lt: RULES.plusSuperHellosPerWeek } },
+    data: { plusSuperUsed: { increment: 1 } },
+  });
+  return res.count === 1;
+};
+
+/** Остаток суперприветов: купленные + недельные «Плюс» (не копятся). */
+export const superHellosLeft = async (userId: string) => {
+  const e = await ensureEntitlement(userId);
+  const plus = !!e.plusUntil && e.plusUntil > new Date();
+  const used = e.plusWeekStart && e.plusWeekStart >= weekStart() ? e.plusSuperUsed : 0;
+  const weekly = plus ? Math.max(0, RULES.plusSuperHellosPerWeek - used) : 0;
+  return { purchased: e.superHellos, weekly, total: e.superHellos + weekly };
+};
 
 /** Ответить на привет: открывается чат, первым сообщением — сам привет. */
 export const replyToHello = async (userId: string, helloId: string, message: string) => {
@@ -301,7 +331,14 @@ export type InboxHello = {
   createdAt: string;
   from: { id: string; name: string; age: number; photoUrl: string };
 };
-export type InboxNotice = { id: string; venueName: string; createdAt: string; canLook: boolean };
+export type InboxNotice = {
+  id: string;
+  kind: "sympathy_anonymous" | "plus_renewal_reminder" | "plus_renewed" | "plus_renewal_failed";
+  /** Только для анонимной симпатии. */
+  venueName: string | null;
+  createdAt: string;
+  canLook: boolean;
+};
 
 /** Входящие: суперприветы сверху, затем приветы; анонимные «кому-то здесь вы понравились». */
 export const inbox = async (userId: string) => {
@@ -321,7 +358,13 @@ export const inbox = async (userId: string) => {
     prisma.notice.findMany({
       where: { userId, createdAt: { gte: since } },
       orderBy: { createdAt: "desc" },
-      select: { id: true, createdAt: true, venueId: true, venue: { select: { name: true } } },
+      select: {
+        id: true,
+        kind: true,
+        createdAt: true,
+        venueId: true,
+        venue: { select: { name: true } },
+      },
     }),
     getPresence(redis, userId),
     prisma.block.findMany({
@@ -348,9 +391,10 @@ export const inbox = async (userId: string) => {
       })),
     notices: notices.map((n): InboxNotice => ({
       id: n.id,
-      venueName: n.venue.name,
+      kind: n.kind,
+      venueName: n.venue?.name ?? null,
       createdAt: n.createdAt.toISOString(),
-      canLook: presence?.venueId === n.venueId,
+      canLook: !!n.venueId && presence?.venueId === n.venueId,
     })),
   };
 };

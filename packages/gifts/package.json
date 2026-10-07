@@ -13,6 +13,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@ryadom/billing": "workspace:*",
     "@ryadom/db": "workspace:*",
     "@ryadom/shared": "workspace:*",
     "ioredis": "^5.4.2"

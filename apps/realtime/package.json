@@ -10,6 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@ryadom/billing": "workspace:*",
     "@ryadom/db": "workspace:*",
     "@ryadom/gifts": "workspace:*",
     "@ryadom/presence": "workspace:*",

@@ -1,3 +1,4 @@
+import { StubPaymentProvider } from "@ryadom/billing";
 import { createPrismaClient } from "@ryadom/db";
 import { afterAll, describe, expect, it } from "vitest";
 import {
@@ -9,7 +10,6 @@ import {
   newPickupCode,
   redeemGift,
   retryRefunds,
-  StubPaymentProvider,
 } from "../src";
 
 const db = createPrismaClient();
@@ -35,13 +35,13 @@ const mkUser = async () => {
 };
 
 const mkGift = async (from: string, to: string, expiresInMs = 3600_000) => {
-  const paid = await payments.charge({
+  const paid = await payments.createPayment({
     amount: item.price,
     currency: "KZT",
     description: "test",
-    idempotencyKey: String(Math.random()),
+    orderId: String(Math.random()),
+    returnUrl: "http://x",
   });
-  if (!paid.ok) throw new Error("charge");
   return db.gift.create({
     data: {
       fromUserId: from,

@@ -60,6 +60,7 @@ const loadPeople = async (
   ids: string[],
   locale: "ru" | "kk",
   visitId: string | null,
+  venueId: string | null = null,
 ) => {
   const blocked = await blockedWith(viewerId, ids);
   const visible = ids.filter((id) => id !== viewerId && !blocked.has(id));
@@ -116,6 +117,9 @@ const loadPeople = async (
       : Promise.resolve([]),
   ]);
   const giftSet = new Set(gifts.map((g) => g.toUserId));
+  // Буст «Плюс» — выше в списке на час, только в том заведении, где включён.
+  const boosts = venueId ? await redis.mget(visible.map((id) => `boost:${id}`)) : [];
+  const boosted = new Set(visible.filter((_, i) => venueId && boosts[i] === venueId));
   const likedSet = new Set(liked.map((l) => l.toUserId));
   const helloSet = new Set(hellos.map((h) => h.toUserId));
   const chatWith = new Map(
@@ -150,7 +154,12 @@ const loadPeople = async (
         giftSent: giftSet.has(u.id),
       };
     })
-    .sort((a, b) => b.common.length - a.common.length || order.get(a.id)! - order.get(b.id)!);
+    .sort(
+      (a, b) =>
+        Number(boosted.has(b.id)) - Number(boosted.has(a.id)) ||
+        b.common.length - a.common.length ||
+        order.get(a.id)! - order.get(b.id)!,
+    );
 };
 
 export const listPeople = async (viewerId: string, locale: "ru" | "kk"): Promise<PeopleResult> => {

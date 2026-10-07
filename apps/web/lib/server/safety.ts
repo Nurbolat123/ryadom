@@ -1,5 +1,6 @@
 import { prisma, type ReportAction } from "@ryadom/db";
-import { cancelGiftsBetween, cancelGiftsOf, getPaymentProvider } from "@ryadom/gifts";
+import { getPaymentProvider } from "@ryadom/billing";
+import { cancelGiftsBetween, cancelGiftsOf } from "@ryadom/gifts";
 import { endPresence, getPresence, publishPresenceEvent, publishUserEvent } from "@ryadom/presence";
 import { ReportInputSchema, RULES } from "@ryadom/shared";
 import type { z } from "zod";

@@ -11,7 +11,7 @@ import { presenceKeys, realtimeTicketKey } from "@ryadom/shared";
 import { Redis } from "ioredis";
 import { io as connect, type Socket } from "socket.io-client";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { StubPaymentProvider } from "@ryadom/gifts";
+import { StubPaymentProvider } from "@ryadom/billing";
 import { createRealtime } from "../src/server";
 
 const db = createPrismaClient();

@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
     "@ryadom/venues",
     "@ryadom/presence",
     "@ryadom/gifts",
+    "@ryadom/billing",
   ],
   // Не генерировать AGENTS.md/CLAUDE.md внутри apps/web: правила проекта в корневом CLAUDE.md.
   agentRules: false,

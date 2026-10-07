@@ -1,18 +1,13 @@
-import { randomUUID } from "node:crypto";
-import { prisma } from "@ryadom/db";
-import {
-  closePendingGift,
-  commissionFor,
-  getPaymentProvider,
-  newPickupCode,
-  publishGiftEvent,
-} from "@ryadom/gifts";
+import { getPaymentProvider } from "@ryadom/billing";
+import { Prisma, prisma, type Purchase } from "@ryadom/db";
+import { closePendingGift, commissionFor, newPickupCode, publishGiftEvent } from "@ryadom/gifts";
 import { getPresence, publishUserEvent } from "@ryadom/presence";
 import { GiftAcceptSchema, GiftInputSchema, RULES } from "@ryadom/shared";
 import type { z } from "zod";
 import { rateLimit } from "../rate-limit";
 import { redis } from "../redis";
 import { track } from "./analytics";
+import { startCheckout } from "./payments";
 import { canSeePerson } from "./people";
 
 /**
@@ -84,11 +79,39 @@ export type SendGiftError =
   | "rate_limited"
   | "payment_failed";
 
+export type SendGiftResult =
+  | { ok: true; status: "paid"; giftId: string | null }
+  | { ok: true; status: "redirect"; redirectUrl: string }
+  | { ok: false; error: SendGiftError };
+
+/** Черновик подарка в заказе: создаётся в Gift только после оплаты. */
+export type GiftDraft = {
+  fromUserId: string;
+  toUserId: string;
+  venueId: string;
+  visitId: string;
+  menuItemId: string;
+  commission: number;
+  note: string | null;
+};
+
+/** Ещё не оплаченные заказы-подарки (не старше 30 минут) — тоже считаются в лимитах. */
+const pendingGiftOrders = (fromId: string, extra: Prisma.PurchaseWhereInput = {}) =>
+  prisma.purchase.count({
+    where: {
+      userId: fromId,
+      status: "pending",
+      giftDraft: { not: Prisma.AnyNull },
+      createdAt: { gte: new Date(Date.now() - RULES.purchaseTtlSeconds * 1000) },
+      ...extra,
+    },
+  });
+
 export const sendGift = async (
   fromId: string,
   toId: string,
   input: z.infer<typeof GiftInputSchema>,
-): Promise<{ ok: true; giftId: string } | { ok: false; error: SendGiftError }> => {
+): Promise<SendGiftResult> => {
   if (fromId === toId) return { ok: false, error: "not_found" };
   const presence = await canSeePerson(fromId, toId);
   if (!presence) return { ok: false, error: "not_found" };
@@ -109,58 +132,111 @@ export const sendGift = async (
   if ((await redis.set(lock, "1", "PX", 15_000, "NX")) !== "OK")
     return { ok: false, error: "rate_limited" };
   try {
-    const [toThisPerson, today] = await Promise.all([
+    const [toThisPerson, toThisPersonPending, today, todayPending] = await Promise.all([
       prisma.gift.count({
         where: { fromUserId: fromId, toUserId: toId, visitId: presence.visitId },
+      }),
+      pendingGiftOrders(fromId, {
+        AND: [
+          { giftDraft: { path: ["toUserId"], equals: toId } },
+          { giftDraft: { path: ["visitId"], equals: presence.visitId } },
+        ],
       }),
       prisma.gift.count({
         where: { fromUserId: fromId, createdAt: { gte: new Date(Date.now() - 24 * 3600_000) } },
       }),
+      pendingGiftOrders(fromId),
     ]);
-    if (toThisPerson >= RULES.giftsPerRecipientPerVisit)
+    if (toThisPerson + toThisPersonPending >= RULES.giftsPerRecipientPerVisit)
       return { ok: false, error: "gift_already_sent" };
-    if (today >= RULES.giftsPerSenderPerDay) return { ok: false, error: "gift_daily_limit" };
+    if (today + todayPending >= RULES.giftsPerSenderPerDay)
+      return { ok: false, error: "gift_daily_limit" };
 
-    const payments = getPaymentProvider();
-    const paid = await payments.charge({
+    const pct = venue.commissionPct === null ? defaultCommissionPct() : Number(venue.commissionPct);
+    const draft: GiftDraft = {
+      fromUserId: fromId,
+      toUserId: toId,
+      venueId: venue.id,
+      visitId: presence.visitId,
+      menuItemId: item.id,
+      commission: commissionFor(item.price, pct),
+      note: input.note || null,
+    };
+    const res = await startCheckout({
+      userId: fromId,
       amount: item.price,
       currency: item.currency,
       description: `Подарок в «${venue.name}»`,
-      idempotencyKey: randomUUID(),
+      giftDraft: draft,
     });
-    if (!paid.ok) return { ok: false, error: "payment_failed" };
+    if (res.status === "failed") return { ok: false, error: "payment_failed" };
+    if (res.status === "redirect")
+      return { ok: true, status: "redirect", redirectUrl: res.redirectUrl };
+    return { ok: true, status: "paid", giftId: res.giftId };
+  } finally {
+    await redis.del(lock);
+  }
+};
 
-    const pct = venue.commissionPct === null ? defaultCommissionPct() : Number(venue.commissionPct);
-    let giftId: string;
-    const now = new Date();
-    try {
-      const gift = await prisma.gift.create({
+/**
+ * Оплата подарка подтверждена — создаём подарок. Если за время оплаты кто-то кого-то
+ * заблокировал или аккаунт закрыт, подарок не создаётся и деньги сразу возвращаются.
+ */
+export const createGiftFromPurchase = async (p: Purchase): Promise<string | null> => {
+  const d = p.giftDraft as unknown as GiftDraft;
+  const payments = getPaymentProvider();
+  const [blocked, users] = await Promise.all([
+    prisma.block.count({
+      where: {
+        OR: [
+          { blockerId: d.fromUserId, blockedId: d.toUserId },
+          { blockerId: d.toUserId, blockedId: d.fromUserId },
+        ],
+      },
+    }),
+    prisma.user.count({ where: { id: { in: [d.fromUserId, d.toUserId] }, bannedAt: null } }),
+  ]);
+  const refund = async () => {
+    const { refundId } = await payments.refund(p.paymentId!, p.amount);
+    await prisma.purchase.update({
+      where: { id: p.id },
+      data: { status: "refunded", refundedAt: new Date() },
+    });
+    return refundId;
+  };
+  if (blocked || users !== 2) {
+    await refund().catch(() => undefined);
+    return null;
+  }
+  const now = new Date();
+  try {
+    const gift = await prisma.$transaction(async (tx) => {
+      const g = await tx.gift.create({
         data: {
-          fromUserId: fromId,
-          toUserId: toId,
-          venueId: venue.id,
-          visitId: presence.visitId,
-          menuItemId: item.id,
-          amount: item.price,
-          commission: commissionFor(item.price, pct),
-          currency: item.currency,
-          note: input.note || null,
-          paymentId: paid.paymentId,
+          fromUserId: d.fromUserId,
+          toUserId: d.toUserId,
+          venueId: d.venueId,
+          visitId: d.visitId,
+          menuItemId: d.menuItemId,
+          amount: p.amount,
+          commission: d.commission,
+          currency: p.currency,
+          note: d.note,
+          paymentId: p.paymentId,
           createdAt: now,
           expiresAt: new Date(now.getTime() + RULES.giftTtlSeconds * 1000),
         },
       });
-      giftId = gift.id;
-    } catch (err) {
-      // Деньги списаны, а подарок не создался — сразу возвращаем.
-      await payments.refund(paid.paymentId, item.price).catch(() => undefined);
-      throw err;
-    }
-    await publishUserEvent(redis, { type: "inbox", userId: toId });
-    await track("gift_sent", venue.id);
-    return { ok: true, giftId };
-  } finally {
-    await redis.del(lock);
+      await tx.purchase.update({ where: { id: p.id }, data: { giftId: g.id } });
+      return g;
+    });
+    await publishUserEvent(redis, { type: "inbox", userId: d.toUserId });
+    await track("gift_sent", d.venueId);
+    return gift.id;
+  } catch (err) {
+    // Деньги списаны, а подарок не создался — сразу возвращаем.
+    await refund().catch(() => undefined);
+    throw err;
   }
 };
 

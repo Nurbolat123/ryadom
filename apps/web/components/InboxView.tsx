@@ -19,7 +19,18 @@ type Hello = {
   message: string;
   from: { id: string; name: string; age: number; photoUrl: string };
 };
-type Notice = { id: string; venueName: string; canLook: boolean };
+type Notice = {
+  id: string;
+  kind: "sympathy_anonymous" | "plus_renewal_reminder" | "plus_renewed" | "plus_renewal_failed";
+  venueName: string | null;
+  canLook: boolean;
+};
+
+const PLUS_NOTICE = {
+  plus_renewal_reminder: "plusReminder",
+  plus_renewed: "plusRenewed",
+  plus_renewal_failed: "plusRenewFailed",
+} as const;
 type ChatSummary = {
   id: string;
   other: { id: string; name: string; photoUrl: string };
@@ -31,6 +42,7 @@ type ChatSummary = {
 export function InboxView() {
   const t = useTranslations("inbox");
   const tSafety = useTranslations("safety");
+  const tp = useTranslations("plus");
   const router = useRouter();
   const [hellos, setHellos] = useState<Hello[] | null>(null);
   const [notices, setNotices] = useState<Notice[]>([]);
@@ -83,20 +95,34 @@ export function InboxView() {
 
   return (
     <div className={ui.body}>
-      <h1 className={ui.title}>{t("title")}</h1>
+      <div className={social.titleRow}>
+        <h1 className={ui.title}>{t("title")}</h1>
+        <Link href="/plus" className={social.plusBadge}>
+          {tp("title")}
+        </Link>
+      </div>
 
-      {notices.map((n) => (
-        <section key={n.id} className={social.notice}>
-          <span>{t("notice", { venue: n.venueName })}</span>
-          {n.canLook ? (
-            <Link href="/home" className={`${ui.button} ${ui.primary} ${social.linkButton}`}>
-              {t("noticeLook")}
+      {notices.map((n) =>
+        n.kind !== "sympathy_anonymous" ? (
+          <section key={n.id} className={social.notice}>
+            <span>{t(PLUS_NOTICE[n.kind])}</span>
+            <Link href="/plus" className={ui.link}>
+              {t("managePlus")}
             </Link>
-          ) : (
-            <span className={ui.note}>{t("noticeGone")}</span>
-          )}
-        </section>
-      ))}
+          </section>
+        ) : (
+          <section key={n.id} className={social.notice}>
+            <span>{t("notice", { venue: n.venueName ?? "" })}</span>
+            {n.canLook ? (
+              <Link href="/home" className={`${ui.button} ${ui.primary} ${social.linkButton}`}>
+                {t("noticeLook")}
+              </Link>
+            ) : (
+              <span className={ui.note}>{t("noticeGone")}</span>
+            )}
+          </section>
+        ),
+      )}
 
       <GiftsInbox received={gifts.received} sent={gifts.sent} onChanged={() => void load()} />
 

@@ -23,5 +23,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!body.success) return fail(400, "invalid_gift");
   const res = await sendGift(session.user.id, (await params).id, body.data);
   if (!res.ok) return fail(STATUS[res.error], res.error);
+  if (res.status === "redirect")
+    return Response.json({ redirectUrl: res.redirectUrl }, { status: 202 });
   return Response.json({ giftId: res.giftId }, { status: 201 });
 }

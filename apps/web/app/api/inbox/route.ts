@@ -12,5 +12,5 @@ export async function GET() {
     inbox(session.user.id),
     superHellosLeft(session.user.id),
   ]);
-  return Response.json({ ...data, superHellos });
+  return Response.json({ ...data, superHellos: superHellos.total });
 }

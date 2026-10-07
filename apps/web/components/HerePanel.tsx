@@ -1,6 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRealtime } from "@/lib/client/realtime";
 import { api } from "./api";
@@ -8,7 +9,10 @@ import styles from "./checkin.module.css";
 import { ErrorText } from "./ErrorText";
 import { announceMatch } from "./MatchOverlay";
 import { PersonCard } from "./PersonCard";
+import social from "./social.module.css";
 import ui from "./ui.module.css";
+
+type Boost = { until: string | null; available: boolean; plus: boolean };
 
 export type Person = {
   id: string;
@@ -48,6 +52,7 @@ export function HerePanel({
 }) {
   const t = useTranslations("here");
   const tc = useTranslations("checkin");
+  const tp = useTranslations("plus");
   const locale = useLocale();
   const [open, setOpen] = useState(checkin.openToMeet);
   const [people, setPeople] = useState<Person[] | null>(null);
@@ -56,6 +61,7 @@ export function HerePanel({
   const [error, setError] = useState<string | null>(null);
   const loading = useRef<Promise<void> | null>(null);
   const again = useRef(false);
+  const [boost, setBoost] = useState<Boost | null>(null);
 
   // Несколько сигналов подряд схлопываются в один запрос (плюс ещё один, если пришли во время запроса).
   const loadPeople = useCallback(async () => {
@@ -87,6 +93,24 @@ export function HerePanel({
     void loadPeople();
   }, [loadPeople]);
 
+  const loadBoost = useCallback(async () => {
+    const res = await api<{ plus: { active: boolean }; boost: Omit<Boost, "plus"> }>("/api/plus");
+    if (res.ok) setBoost({ ...res.data.boost, plus: res.data.plus.active });
+  }, []);
+
+  useEffect(() => {
+    if (open) void loadBoost();
+  }, [open, loadBoost]);
+
+  const startBoost = async () => {
+    setBusy(true);
+    setError(null);
+    const res = await api<{ until: string }>("/api/here/boost", { method: "POST" });
+    setBusy(false);
+    if (!res.ok) return setError(res.error);
+    setBoost((b) => (b ? { ...b, until: res.data.until, available: false } : b));
+  };
+
   useRealtime({
     onPeopleChanged: () => {
       void loadPeople();
@@ -113,14 +137,13 @@ export function HerePanel({
     await onLeave();
   };
 
-  const until = new Date(checkin.expiresAt).toLocaleTimeString(
-    locale === "kk" ? "kk-KZ" : "ru-RU",
-    {
+  const time = (iso: string) =>
+    new Date(iso).toLocaleTimeString(locale === "kk" ? "kk-KZ" : "ru-RU", {
       hour: "2-digit",
       minute: "2-digit",
       hour12: false,
-    },
-  );
+    });
+  const until = time(checkin.expiresAt);
 
   return (
     <>
@@ -148,6 +171,21 @@ export function HerePanel({
 
       {checkin.openCount !== null ? (
         <p className={styles.count}>{tc("openCount", { count: checkin.openCount })}</p>
+      ) : null}
+
+      {open && boost ? (
+        boost.until ? (
+          <p className={styles.count}>{tp("boostOn", { time: time(boost.until) })}</p>
+        ) : boost.available ? (
+          <button className={`${ui.button} ${ui.secondary}`} onClick={startBoost} disabled={busy}>
+            {tp("boost")}
+            <span className={ui.note}> · {tp("boostHint")}</span>
+          </button>
+        ) : !boost.plus ? (
+          <Link href="/plus" className={`${ui.link} ${social.plusLink}`}>
+            {tp("more")}
+          </Link>
+        ) : null
       ) : null}
 
       {!open ? (

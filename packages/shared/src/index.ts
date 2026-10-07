@@ -5,3 +5,4 @@ export * from "./rules";
 export * from "./schemas";
 export * from "./age";
 export * from "./phone";
+export * from "./products";

@@ -1,7 +1,7 @@
 import { randomInt } from "node:crypto";
 import { trackEvent, type Gift, type PrismaClient } from "@ryadom/db";
 import type { Redis } from "ioredis";
-import type { PaymentProvider } from "./payments";
+import type { PaymentProvider } from "@ryadom/billing";
 
 /**
  * Жизненный цикл подарка (CLAUDE.md, «Подарок-комплимент»):

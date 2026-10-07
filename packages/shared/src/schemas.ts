@@ -98,3 +98,16 @@ export const GiftAcceptSchema = z.discriminatedUnion("delivery", [
       .regex(/^[\p{L}\p{N} -]{1,10}$/u),
   }),
 ]);
+
+/** Покупка «Плюс» или суперприветов. Автопродление — только явной галочкой (по умолчанию нет). */
+export const PurchaseInputSchema = z.object({
+  product: z.enum([
+    "plus_evening",
+    "plus_week",
+    "plus_month",
+    "plus_3months",
+    "super_hello_1",
+    "super_hello_5",
+  ]),
+  autoRenew: z.boolean().default(false),
+});

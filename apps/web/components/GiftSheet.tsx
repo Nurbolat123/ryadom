@@ -56,9 +56,15 @@ export function GiftSheet({
     if (!item) return;
     setBusy(true);
     setError(null);
-    const res = await api(`/api/people/${person.id}/gift`, {
-      json: { menuItemId: item.id, note: note.trim() || undefined },
-    });
+    const res = await api<{ giftId?: string; redirectUrl?: string }>(
+      `/api/people/${person.id}/gift`,
+      { json: { menuItemId: item.id, note: note.trim() || undefined } },
+    );
+    if (res.ok && res.data.redirectUrl) {
+      // Оплата на странице провайдера; подарок создастся после подтверждения.
+      window.location.href = res.data.redirectUrl;
+      return;
+    }
     setBusy(false);
     if (!res.ok) return setError(res.error);
     setDone(true);

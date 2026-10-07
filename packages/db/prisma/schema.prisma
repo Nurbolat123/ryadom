@@ -82,6 +82,11 @@ enum OfferPlacement {
 
 enum NoticeKind {
   sympathy_anonymous
+  /// За 2 дня до продления «Плюс» (продление только с согласия).
+  plus_renewal_reminder
+  plus_renewed
+  /// Продлить не получилось — «Плюс» закончился, деньги не списаны.
+  plus_renewal_failed
 }
 
 enum HelloStatus {
@@ -501,13 +506,14 @@ model Hello {
 model Notice {
   id        String     @id @default(cuid())
   userId    String
-  venueId   String
+  /// Для симпатии — заведение; для уведомлений о «Плюс» — пусто.
+  venueId   String?
   kind      NoticeKind @default(sympathy_anonymous)
   createdAt DateTime   @default(now())
   readAt    DateTime?
 
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  venue Venue? @relation(fields: [venueId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
 }
@@ -577,32 +583,51 @@ model Price {
 }
 
 /// Покупка. При удалении аккаунта userId обнуляется — финансовая запись остаётся без ПДн.
+/// Оплата подарка тоже идёт через Purchase: подарок создаётся только после оплаты (giftDraft → giftId).
 model Purchase {
-  id        String        @id @default(cuid())
-  userId    String?
-  product   ProductCode
-  amount    Int
-  currency  String        @db.Char(3)
-  status    PaymentStatus @default(pending)
+  id         String        @id @default(cuid())
+  userId     String?
+  /// «Плюс» или суперприветы; для подарка — пусто.
+  product    ProductCode?
+  amount     Int
+  currency   String        @db.Char(3)
+  status     PaymentStatus @default(pending)
+  /// Какой PaymentProvider проводил платёж (stub, kaspi).
+  provider   String        @default("stub")
   /// Идентификатор платежа в PaymentProvider.
-  paymentId String?       @unique
-  createdAt DateTime      @default(now())
-  paidAt    DateTime?
+  paymentId  String?       @unique
+  /// Подарок до оплаты: кому, где, какая позиция (без текстов о человеке).
+  giftDraft  Json?
+  giftId     String?       @unique
+  /// Покупатель согласился на автопродление (только месячные тарифы).
+  autoRenew  Boolean       @default(false)
+  /// Это автоматическое продление, а не покупка вручную.
+  isRenewal  Boolean       @default(false)
+  createdAt  DateTime      @default(now())
+  paidAt     DateTime?
+  failedAt   DateTime?
+  refundedAt DateTime?
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([userId, createdAt])
+  @@index([status, createdAt])
 }
 
 /// Активный «Плюс» и остаток суперприветов.
 model Entitlement {
-  userId           String       @id
-  plusUntil        DateTime?
-  superHellos      Int          @default(0)
+  userId            String       @id
+  plusUntil         DateTime?
+  superHellos       Int          @default(0)
   /// Автопродление только с явного согласия.
-  autoRenew        Boolean      @default(false)
-  autoRenewProduct ProductCode?
-  updatedAt        DateTime     @updatedAt
+  autoRenew         Boolean      @default(false)
+  autoRenewProduct  ProductCode?
+  /// Напоминание о продлении отправлено для текущего plusUntil.
+  renewalRemindedAt DateTime?
+  /// «Плюс» даёт 2 суперпривета в неделю: начало текущей недели и сколько из них потрачено.
+  plusWeekStart     DateTime?
+  plusSuperUsed     Int          @default(0)
+  updatedAt         DateTime     @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

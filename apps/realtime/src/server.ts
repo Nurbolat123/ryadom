@@ -1,7 +1,13 @@
 import { createHash } from "node:crypto";
 import { createServer } from "node:http";
 import type { PrismaClient } from "@ryadom/db";
-import { expireGifts, getPaymentProvider, retryRefunds, type PaymentProvider } from "@ryadom/gifts";
+import {
+  expireStalePurchases,
+  getPaymentProvider,
+  processRenewals,
+  type PaymentProvider,
+} from "@ryadom/billing";
+import { expireGifts, retryRefunds } from "@ryadom/gifts";
 import {
   getPresence,
   parsePresenceEvent,
@@ -178,6 +184,13 @@ export const createRealtime = ({
       for (const u of [g.fromUserId, g.toUserId]) if (u) io.to(userRoom(u)).emit("inbox:changed");
     }
     await retryRefunds({ db, payments });
+    // Неоплаченные заказы старше 30 минут закрываются; продления «Плюс» и напоминания за 2 дня.
+    await expireStalePurchases(db);
+    await processRenewals({
+      db,
+      payments,
+      notify: (userId) => io.to(userRoom(userId)).emit("inbox:changed"),
+    });
   };
   const timer = setInterval(() => void sweep().catch(() => undefined), sweepIntervalMs);
 

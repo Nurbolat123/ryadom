@@ -4,7 +4,8 @@ import { jar } from "./cookies-mock";
 vi.mock("next-intl/server", () => ({ getLocale: async () => "ru" }));
 
 const { prisma } = await import("@ryadom/db");
-const { GIFT_CHANNEL, setPaymentProvider, StubPaymentProvider } = await import("@ryadom/gifts");
+const { GIFT_CHANNEL } = await import("@ryadom/gifts");
+const { setPaymentProvider, StubPaymentProvider } = await import("@ryadom/billing");
 const { endPresence, setOpenToMeet, startPresence, USER_CHANNEL } =
   await import("@ryadom/presence");
 const { GET: menu } = await import("@/app/api/here/menu/route");
@@ -20,7 +21,7 @@ const { redis } = await import("@/lib/redis");
 const { startSession } = await import("@/lib/server/session");
 const { banUser } = await import("@/lib/server/safety");
 
-const payments = new StubPaymentProvider();
+const payments = new StubPaymentProvider("instant");
 setPaymentProvider(payments);
 
 const TEPLYI = await prisma.venue.findUniqueOrThrow({ where: { slug: "teplyi-ugol" } });
@@ -162,7 +163,7 @@ describe("отправка подарка", () => {
     const g = await prisma.gift.findUniqueOrThrow({ where: { id: await giftId(res) } });
     expect(g).toMatchObject({ status: "pending", amount: coffee.price, note: "Хорошего вечера!" });
     expect(g.commission).toBe(Math.round(coffee.price * 0.12));
-    expect(payments.charges.get(g.paymentId!)).toBe(coffee.price);
+    expect(payments.payments.get(g.paymentId!)).toBe(coffee.price);
     expect(g.expiresAt.getTime() - g.createdAt.getTime()).toBe(2 * 3600_000);
     expect(bus.events).toEqual([{ type: "inbox", userId: b.id }]);
 
@@ -191,7 +192,7 @@ describe("отправка подарка", () => {
 
   it("оплата не прошла — подарка нет", async () => {
     const [a, b] = await pair();
-    payments.failNextCharge = true;
+    payments.failNextPayment = true;
     expect((await send(a.id, b.id)).status).toBe(402);
     expect(await prisma.gift.count({ where: { fromUserId: a.id } })).toBe(0);
   });
