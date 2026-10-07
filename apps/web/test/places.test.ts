@@ -135,7 +135,7 @@ describe("Где знакомятся сейчас", () => {
     const kitap = data.items.find((i) => i.slug === "kofe-kitap") as unknown as {
       offer: { title: string; isAd: boolean } | null;
     };
-    expect(kitap.offer).toEqual({ title: ad.title, isAd: true });
+    expect(kitap.offer).toEqual({ title: ad.title, isAd: true, byInterests: false });
     expect(data.promos.map((p) => p.id)).toContain(promo.id);
     expect(data.promos.find((p) => p.id === promo.id)?.isAd).toBe(true);
     const stats = await prisma.offerStatsDaily.findMany({ where: { offerId: ad.id } });
@@ -264,5 +264,86 @@ describe("админка предложений, отчётов и воронк�
     const partners = await (await adminPartners()).text();
     expect(partners).not.toMatch(/phone|userId|displayName|code"/);
     expect(partners).toContain("Kofe Kitap");
+  });
+});
+
+describe("предложения по интересам (правило 14)", () => {
+  type PlaceOffers = { offers: { id: string; byInterests: boolean }[] };
+  const offersAt = async () =>
+    ((await (await place(get(), ctx("slug", "kofe-kitap"))).json()) as PlaceOffers).offers;
+  const withInterests = async (interestIds: string[], adsConsent: boolean) => {
+    const id = await mkUser();
+    await prisma.user.update({
+      where: { id },
+      data: {
+        adsConsent,
+        interests: { create: interestIds.map((interestId) => ({ interestId })) },
+      },
+    });
+    return id;
+  };
+
+  it("видят только те, кто сам включил согласие и у кого есть такой интерес", async () => {
+    const [books, sport] = await prisma.interest.findMany({
+      take: 2,
+      orderBy: { sortOrder: "asc" },
+    });
+    const targeted = await mkOffer({
+      title: "Книжный вечер −15%",
+      interests: { create: [{ interestId: books!.id }] },
+    });
+    const general = await mkOffer({ title: "Для всех −10%" });
+
+    const visible = async (userId: string | null) => {
+      await as(userId);
+      const ids = (await offersAt()).map((o) => o.id);
+      expect(ids).toContain(general.id);
+      return ids.includes(targeted.id);
+    };
+    expect(await visible(null)).toBe(false);
+    // Интерес есть, но согласия нет — интересы не используются.
+    expect(await visible(await withInterests([books!.id], false))).toBe(false);
+    // Согласие есть, но интерес другой.
+    expect(await visible(await withInterests([sport!.id], true))).toBe(false);
+    const fan = await withInterests([books!.id, sport!.id], true);
+    expect(await visible(fan)).toBe(true);
+    const shown = (await offersAt()).find((o) => o.id === targeted.id);
+    expect(shown?.byInterests).toBe(true);
+    expect((await offersAt()).find((o) => o.id === general.id)?.byInterests).toBe(false);
+
+    // В общем списке мест — так же.
+    await as(await withInterests([books!.id], false));
+    expect((await list()).text).not.toContain("Книжный вечер");
+
+    // Код скидки по такому предложению — тоже только своей аудитории.
+    expect((await offerCode(post(), ctx("id", targeted.id))).status).toBe(404);
+    await as(fan);
+    expect((await offerCode(post(), ctx("id", targeted.id))).status).toBe(201);
+
+    // Выключил согласие — предложение сразу пропало.
+    await prisma.user.update({ where: { id: fan }, data: { adsConsent: false } });
+    expect((await offersAt()).map((o) => o.id)).not.toContain(targeted.id);
+  });
+
+  it("модератор задаёт интересы; несуществующий интерес — 400", async () => {
+    await as(await mkUser("admin"));
+    const [books] = await prisma.interest.findMany({ take: 1, orderBy: { sortOrder: "asc" } });
+    const base = {
+      venueSlug: "kofe-kitap",
+      type: "promo",
+      placement: "badge",
+      title: "Тест модерации: по интересам",
+      startsAt: new Date().toISOString(),
+      endsAt: new Date(Date.now() + 86_400_000).toISOString(),
+    };
+    expect((await adminCreate(post({ ...base, interestIds: ["nope"] }))).status).toBe(400);
+    const res = await adminCreate(post({ ...base, interestIds: [books!.id] }));
+    expect(res.status).toBe(201);
+    const { id } = (await res.json()) as { id: string };
+    expect(await prisma.offerInterest.count({ where: { offerId: id } })).toBe(1);
+    const listed = (await (await adminOffers()).json()) as {
+      offers: { id: string; interests: string[] }[];
+    };
+    expect(listed.offers.find((o) => o.id === id)?.interests).toEqual([books!.nameRu]);
   });
 });

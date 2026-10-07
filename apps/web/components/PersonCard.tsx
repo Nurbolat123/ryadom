@@ -9,7 +9,7 @@ import { ErrorText } from "./ErrorText";
 import { GiftSheet } from "./GiftSheet";
 import { HelloSheet } from "./HelloSheet";
 import { SafetySheet } from "./SafetySheet";
-import type { Person } from "./HerePanel";
+import type { Person } from "./PeopleList";
 import social from "./social.module.css";
 import ui from "./ui.module.css";
 

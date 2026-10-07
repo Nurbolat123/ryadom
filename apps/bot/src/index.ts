@@ -4,12 +4,14 @@ import { Bot, InlineKeyboard } from "grammy";
 import { Redis } from "ioredis";
 import { createOfferCommands } from "./offers";
 import { createOrders } from "./orders";
+import { TEXTS, textsFor } from "./texts";
 
 /**
  * Telegram-бот заведений-партнёров.
  * - /link КОД — привязать чат персонала к заведению (код выдаёт `pnpm bot:link <slug>`).
  * - Принятый подарок приходит заказом: позиция, код выдачи, столик и кнопка «Выдано».
  * - /redeem КОД — погасить код скидки по предложению; /report — отчёт по предложениям за 7 дней.
+ * - /lang kk|ru — язык бота в этом чате (по умолчанию русский).
  * Логи без имён, телефонов и текстов.
  */
 const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -39,12 +41,14 @@ const orders = createOrders({
 
 const offers = createOfferCommands(db);
 
-bot.command("start", (ctx) =>
-  ctx.reply(
-    "Бот заведения «рядом». Сюда приходят заказы подарков для гостей.\n" +
-      "Чтобы привязать этот чат к заведению, отправьте /link КОД (код выдаёт администратор «рядом»).\n" +
-      "Гость показал код скидки — отправьте /redeem КОД. Отчёт по предложениям — /report.",
-  ),
+bot.command("start", async (ctx) => {
+  const locale = await orders.localeOf(String(ctx.chat.id));
+  // Чат ещё не привязан — язык неизвестен, показываем оба.
+  return ctx.reply(locale ? TEXTS[locale].start : `${TEXTS.ru.start}\n\n${TEXTS.kk.start}`);
+});
+
+bot.command("lang", async (ctx) =>
+  ctx.reply(await orders.setLocale(String(ctx.chat.id), ctx.match ?? "")),
 );
 
 bot.command("redeem", async (ctx) =>
@@ -54,12 +58,12 @@ bot.command("report", async (ctx) => ctx.reply(await offers.report(String(ctx.ch
 
 bot.command("link", async (ctx) => {
   const code = ctx.match?.trim();
-  if (!code) return ctx.reply("Отправьте: /link КОД");
-  const name = await orders.link(code, String(ctx.chat.id));
+  if (!code) return ctx.reply(`${TEXTS.ru.linkUsage}\n${TEXTS.kk.linkUsage}`);
+  const linked = await orders.link(code, String(ctx.chat.id));
   return ctx.reply(
-    name
-      ? `Готово: этот чат получает заказы подарков заведения «${name}».`
-      : "Код не подошёл или истёк. Попросите новый.",
+    linked
+      ? textsFor(linked.locale).linked(linked.name)
+      : `${TEXTS.ru.linkFailed}\n${TEXTS.kk.linkFailed}`,
   );
 });
 
@@ -70,7 +74,7 @@ bot.on("callback_query:data", async (ctx) => {
   await ctx.answerCallbackQuery({ text: res.text });
   if (res.ok) {
     const text = ctx.callbackQuery.message?.text ?? "";
-    await ctx.editMessageText(`${text}\n\n✓ Выдано`).catch(() => undefined);
+    await ctx.editMessageText(`${text}\n\n${res.suffix}`).catch(() => undefined);
   }
 });
 

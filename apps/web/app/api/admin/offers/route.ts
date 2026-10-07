@@ -17,6 +17,6 @@ export async function POST(req: Request) {
   const body = OfferInputSchema.safeParse(await readJson(req));
   if (!body.success) return fail(400, "invalid_offer");
   const res = await createOffer(body.data);
-  if (!res.ok) return fail(404, res.error);
+  if (!res.ok) return fail(res.error === "bad_interests" ? 400 : 404, res.error);
   return Response.json({ id: res.id }, { status: 201 });
 }

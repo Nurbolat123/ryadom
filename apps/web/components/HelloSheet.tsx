@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { api } from "./api";
 import styles from "./checkin.module.css";
 import { ErrorText } from "./ErrorText";
-import type { Person } from "./HerePanel";
+import type { Person } from "./PeopleList";
 import social from "./social.module.css";
 import ui from "./ui.module.css";
 

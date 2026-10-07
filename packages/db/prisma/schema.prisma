@@ -241,7 +241,8 @@ model Interest {
   sortOrder Int     @default(0)
   isActive  Boolean @default(true)
 
-  users UserInterest[]
+  users  UserInterest[]
+  offers OfferInterest[]
 }
 
 /// До 10 интересов на человека — проверяется в API (RULES.maxInterestsPerUser).
@@ -279,6 +280,8 @@ model Venue {
   isPartner      Boolean                                  @default(false)
   /// Чат персонала в Telegram (строкой: id бывают за пределами int32).
   telegramChatId String?
+  /// Язык сообщений бота в чате персонала: ru или kk (меняется командой /lang или в админке).
+  staffLocale    Locale                                   @default(ru)
   isActive       Boolean                                  @default(true)
   /// Комиссия платформы, %. Если null — берётся PLATFORM_COMMISSION_PCT.
   commissionPct  Decimal?                                 @db.Decimal(5, 2)
@@ -410,8 +413,23 @@ model Offer {
   venue       Venue             @relation(fields: [venueId], references: [id], onDelete: Cascade)
   redemptions OfferRedemption[]
   stats       OfferStatsDaily[]
+  /// Показ по интересам: если список не пуст, предложение видят только те, кто дал согласие
+  /// (User.adsConsent) и у кого есть хотя бы один из этих интересов (правило 14).
+  interests   OfferInterest[]
 
   @@index([venueId, status, startsAt, endsAt])
+}
+
+/// Интересы, по которым показывается предложение. Только связь предложения со справочником.
+model OfferInterest {
+  offerId    String
+  interestId String
+
+  offer    Offer    @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  interest Interest @relation(fields: [interestId], references: [id], onDelete: Cascade)
+
+  @@id([offerId, interestId])
+  @@index([interestId])
 }
 
 /// Показы и переходы предложения по дням — для отчёта партнёру. Только счётчики, без людей.

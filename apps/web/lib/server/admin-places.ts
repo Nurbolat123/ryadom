@@ -9,7 +9,10 @@ export const listOffers = async () => {
   const offers = await prisma.offer.findMany({
     where: { endsAt: { gt: new Date(Date.now() - 30 * 86_400_000) } },
     orderBy: [{ status: "asc" }, { createdAt: "desc" }],
-    include: { venue: { select: { name: true, slug: true } } },
+    include: {
+      venue: { select: { name: true, slug: true } },
+      interests: { select: { interest: { select: { nameRu: true } } } },
+    },
     take: 200,
   });
   return offers.map((o) => ({
@@ -25,6 +28,7 @@ export const listOffers = async () => {
     isPaid: o.isPaid,
     status: o.status,
     alcohol: offerMentionsAlcohol(o),
+    interests: o.interests.map((i) => i.interest.nameRu),
   }));
 };
 
@@ -34,6 +38,9 @@ export const createOffer = async (input: z.infer<typeof OfferInputSchema>) => {
     select: { id: true },
   });
   if (!venue) return { ok: false as const, error: "not_found" as const };
+  const interestIds = [...new Set(input.interestIds)];
+  const known = await prisma.interest.count({ where: { id: { in: interestIds }, isActive: true } });
+  if (known !== interestIds.length) return { ok: false as const, error: "bad_interests" as const };
   const o = await prisma.offer.create({
     data: {
       venueId: venue.id,
@@ -47,6 +54,7 @@ export const createOffer = async (input: z.infer<typeof OfferInputSchema>) => {
       endsAt: input.endsAt,
       isPaid: input.isPaid,
       status: "pending",
+      interests: { create: interestIds.map((interestId) => ({ interestId })) },
     },
     select: { id: true },
   });

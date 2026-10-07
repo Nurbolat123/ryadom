@@ -35,6 +35,7 @@ type Venue = {
   isPartner: boolean;
   geofenceKind: "building" | "circle" | "manual";
   telegramLinked: boolean;
+  staffLocale: "ru" | "kk";
   commissionPct: number | null;
   maxGiftAmount: number | null;
   defaults: { commissionPct: number; maxGiftAmount: number };
@@ -326,9 +327,21 @@ function GeofenceForm({ venue, onSaved }: { venue: Venue; onSaved: () => void })
 
 function TelegramCard({ venue }: { venue: Venue }) {
   const t = useTranslations("adminVenues");
+  const tl = useTranslations("language");
   const [code, setCode] = useState<string | null>(null);
   const [linked, setLinked] = useState(venue.telegramLinked);
+  const [staffLocale, setStaffLocale] = useState(venue.staffLocale);
   const [error, setError] = useState<string | null>(null);
+
+  const changeLocale = async (locale: "ru" | "kk") => {
+    setError(null);
+    const r = await api(`/api/admin/venues/${venue.id}`, {
+      method: "PATCH",
+      json: { staffLocale: locale },
+    });
+    if (r.ok) setStaffLocale(locale);
+    else setError(r.error);
+  };
 
   const issue = async () => {
     setError(null);
@@ -349,6 +362,18 @@ function TelegramCard({ venue }: { venue: Venue }) {
     <section className={`${ui.card} ${social.adminForm}`}>
       <h2 className={social.sectionTitle}>{t("telegramTitle")}</h2>
       <p className={ui.note}>{linked ? t("telegramLinked") : t("telegramNotLinked")}</p>
+      <label className={ui.field}>
+        <span className={ui.label}>{t("staffLocale")}</span>
+        <select
+          className={ui.input}
+          value={staffLocale}
+          onChange={(e) => void changeLocale(e.target.value as "ru" | "kk")}
+        >
+          <option value="ru">{tl("ru")}</option>
+          <option value="kk">{tl("kk")}</option>
+        </select>
+        <span className={ui.note}>{t("staffLocaleHint")}</span>
+      </label>
       {code ? (
         <>
           <p className={social.code}>{code}</p>

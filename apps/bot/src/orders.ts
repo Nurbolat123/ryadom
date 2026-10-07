@@ -2,6 +2,7 @@ import type { PrismaClient } from "@ryadom/db";
 import { linkKey, redeemGift } from "@ryadom/gifts";
 import { publishUserEvent } from "@ryadom/presence";
 import type { Redis } from "ioredis";
+import { TEXTS, textsFor, type StaffLocale } from "./texts";
 
 /**
  * Заказы подарков для персонала заведения.
@@ -16,21 +17,11 @@ export type StaffApi = {
 
 const REDEEM_PREFIX = "redeem:";
 
-export const orderText = (o: {
-  item: string;
-  pickupCode: string | null;
-  delivery: "pickup" | "table" | null;
-  tableNumber: string | null;
-}) =>
-  [
-    "🎁 Подарок для гостя",
-    `Позиция: ${o.item}`,
-    `Код выдачи: ${o.pickupCode ?? "—"}`,
-    o.delivery === "table"
-      ? `Принести за столик ${o.tableNumber}`
-      : "Гость заберёт у стойки по коду",
-    "Оплачено через «рядом».",
-  ].join("\n");
+/** Текст заказа для персонала (на языке заведения). */
+export const orderText = (
+  o: Parameters<(typeof TEXTS)["ru"]["order"]>[0],
+  locale: StaffLocale = "ru",
+) => TEXTS[locale].order(o);
 
 export const createOrders = ({
   db,
@@ -46,8 +37,8 @@ export const createOrders = ({
     const gift = await db.gift.findUnique({
       where: { id: giftId },
       include: {
-        menuItem: { select: { name: true } },
-        venue: { select: { telegramChatId: true } },
+        menuItem: { select: { name: true, nameKk: true } },
+        venue: { select: { telegramChatId: true, staffLocale: true } },
       },
     });
     if (!gift || gift.status !== "accepted" || gift.staffNotifiedAt) return false;
@@ -62,16 +53,21 @@ export const createOrders = ({
       data: { staffNotifiedAt: new Date() },
     });
     if (claimed.count !== 1) return false;
+    const locale = gift.venue.staffLocale;
+    const t = textsFor(locale);
     try {
       await api.sendMessage(
         chatId,
-        orderText({
-          item: gift.menuItem.name,
-          pickupCode: gift.pickupCode,
-          delivery: gift.delivery,
-          tableNumber: gift.tableNumber,
-        }),
-        [{ text: "Выдано", callback_data: `${REDEEM_PREFIX}${gift.id}` }],
+        orderText(
+          {
+            item: (locale === "kk" && gift.menuItem.nameKk) || gift.menuItem.name,
+            pickupCode: gift.pickupCode,
+            delivery: gift.delivery,
+            tableNumber: gift.tableNumber,
+          },
+          locale,
+        ),
+        [{ text: t.redeemButton, callback_data: `${REDEEM_PREFIX}${gift.id}` }],
       );
       return true;
     } catch (err) {
@@ -99,16 +95,16 @@ export const createOrders = ({
 
   /** Кнопка «Выдано». Работает только в чате того заведения, где подарок. */
   const onButton = async (data: string, chatId: string) => {
-    if (!data.startsWith(REDEEM_PREFIX)) return { ok: false as const, text: "Неизвестная кнопка" };
+    const t = textsFor(await localeOf(chatId));
+    if (!data.startsWith(REDEEM_PREFIX)) return { ok: false as const, text: t.unknownButton };
     const res = await redeemGift(db, data.slice(REDEEM_PREFIX.length), chatId);
     if (!res.ok) {
-      const text =
-        res.error === "not_accepted" ? "Этот подарок уже выдан или отменён." : "Заказ не найден.";
+      const text = res.error === "not_accepted" ? t.alreadyRedeemed : t.orderNotFound;
       return { ok: false as const, text };
     }
     for (const u of [res.gift.toUserId, res.gift.fromUserId])
       if (u) await publishUserEvent(redis, { type: "inbox", userId: u });
-    return { ok: true as const, text: "Отмечено: выдано ✓" };
+    return { ok: true as const, text: t.markedRedeemed, suffix: t.redeemedSuffix };
   };
 
   /** /link КОД — привязать этот чат к заведению. */
@@ -118,11 +114,31 @@ export const createOrders = ({
     const venue = await db.venue.update({
       where: { id: venueId },
       data: { telegramChatId: chatId },
-      select: { name: true },
+      select: { name: true, staffLocale: true },
     });
     await announcePending();
-    return venue.name;
+    return { name: venue.name, locale: venue.staffLocale };
   };
 
-  return { announce, announcePending, onButton, link };
+  /** Язык бота в чате заведения; чат не привязан — null. */
+  const localeOf = async (chatId: string) =>
+    (
+      await db.venue.findFirst({
+        where: { telegramChatId: chatId },
+        select: { staffLocale: true },
+      })
+    )?.staffLocale ?? null;
+
+  /** /lang kk|ru — язык бота в привязанном чате. */
+  const setLocale = async (chatId: string, arg: string) => {
+    const locale = arg.trim().toLowerCase();
+    if (locale !== "ru" && locale !== "kk") return textsFor(await localeOf(chatId)).langUsage;
+    const res = await db.venue.updateMany({
+      where: { telegramChatId: chatId },
+      data: { staffLocale: locale },
+    });
+    return res.count ? TEXTS[locale].langSet : TEXTS[locale].notLinked;
+  };
+
+  return { announce, announcePending, onButton, link, localeOf, setLocale };
 };

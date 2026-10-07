@@ -1,7 +1,7 @@
 "use client";
 
 import { OfferPlacement, OfferType } from "@ryadom/shared";
-import { useFormatter, useTranslations } from "next-intl";
+import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { AdminNav } from "./AdminNav";
 import { api } from "./api";
@@ -22,7 +22,9 @@ type Offer = {
   isPaid: boolean;
   status: "pending" | "approved" | "rejected";
   alcohol: boolean;
+  interests: string[];
 };
+type Interest = { id: string; nameRu: string; nameKk: string };
 
 /** datetime-local в часовом поясе браузера модератора. */
 const localInput = (d: Date) =>
@@ -39,6 +41,7 @@ const emptyForm = () => ({
   startsAt: localInput(new Date()),
   endsAt: localInput(new Date(Date.now() + 14 * 86_400_000)),
   isPaid: false,
+  interestIds: [] as string[],
 });
 
 /** Предложения заведений: добавление и модерация (алкоголь не одобряется). */
@@ -49,6 +52,8 @@ export function AdminOffers() {
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [interests, setInterests] = useState<Interest[]>([]);
+  const locale = useLocale();
 
   const load = useCallback(async () => {
     const r = await api<{ offers: Offer[] }>("/api/admin/offers");
@@ -56,6 +61,20 @@ export function AdminOffers() {
     else setError(r.error);
   }, []);
   useEffect(() => void load(), [load]);
+  useEffect(() => {
+    void api<{ interests: Interest[] }>("/api/interests").then(
+      (r) => r.ok && setInterests(r.data.interests),
+    );
+  }, []);
+  const toggleInterest = (id: string) =>
+    setForm((f) => ({
+      ...f,
+      interestIds: f.interestIds.includes(id)
+        ? f.interestIds.filter((i) => i !== id)
+        : f.interestIds.length < 10
+          ? [...f.interestIds, id]
+          : f.interestIds,
+    }));
 
   const set = <K extends keyof ReturnType<typeof emptyForm>>(
     k: K,
@@ -173,6 +192,23 @@ export function AdminOffers() {
             onChange={(e) => set("endsAt", e.target.value)}
           />
         </label>
+        <fieldset className={social.adminFieldset}>
+          <legend className={ui.label}>{t("offer.interests")}</legend>
+          <p className={ui.note}>{t("offer.interestsHint")}</p>
+          <div className={ui.chips}>
+            {interests.map((i) => (
+              <button
+                key={i.id}
+                type="button"
+                className={ui.chip}
+                aria-pressed={form.interestIds.includes(i.id)}
+                onClick={() => toggleInterest(i.id)}
+              >
+                {locale === "kk" ? i.nameKk : i.nameRu}
+              </button>
+            ))}
+          </div>
+        </fieldset>
         <label className={social.check}>
           <input
             type="checkbox"
@@ -201,6 +237,11 @@ export function AdminOffers() {
               <span className={ui.note}>
                 {date(o.startsAt)} — {date(o.endsAt)}
               </span>
+              {o.interests.length ? (
+                <span className={ui.note}>
+                  {t("offerInterests", { list: o.interests.join(", ") })}
+                </span>
+              ) : null}
               <span className={ui.note}>{t(`offerStatus.${o.status}`)}</span>
             </div>
             {o.description ? <p className={social.message}>{o.description}</p> : null}

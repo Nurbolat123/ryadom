@@ -140,6 +140,7 @@ export const getVenue = async (id: string) => {
     isPartner: v.isPartner,
     geofenceKind: v.geofenceKind,
     telegramLinked: v.telegramChatId !== null,
+    staffLocale: v.staffLocale,
     commissionPct: v.commissionPct === null ? null : Number(v.commissionPct),
     maxGiftAmount: v.maxGiftAmount === null ? null : fromMinor(v.maxGiftAmount),
     defaults: {

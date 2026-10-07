@@ -117,7 +117,7 @@ export function InboxView() {
           <section key={n.id} className={social.notice}>
             <span>{t("notice", { venue: n.venueName ?? "" })}</span>
             {n.canLook ? (
-              <Link href="/home" className={`${ui.button} ${ui.primary} ${social.linkButton}`}>
+              <Link href="/nearby" className={`${ui.button} ${ui.primary} ${social.linkButton}`}>
                 {t("noticeLook")}
               </Link>
             ) : (

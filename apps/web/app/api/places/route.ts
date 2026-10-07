@@ -1,5 +1,6 @@
 import { PlacesQuerySchema } from "@ryadom/shared";
 import { getLocale } from "next-intl/server";
+import { offerAudience } from "@/lib/server/ads";
 import { fail, readJson } from "@/lib/server/http";
 import { listPlaces } from "@/lib/server/places";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
@@ -15,5 +16,5 @@ export async function POST(req: Request) {
   const body = PlacesQuerySchema.safeParse(await readJson(req));
   if (!body.success) return fail(400, "bad_request");
   const locale = (await getLocale()) === "kk" ? "kk" : "ru";
-  return Response.json(await listPlaces(body.data, locale));
+  return Response.json(await listPlaces(body.data, locale, await offerAudience()));
 }

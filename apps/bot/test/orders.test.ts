@@ -51,7 +51,10 @@ const acceptedGift = async (delivery: "pickup" | "table") => {
 };
 
 afterAll(async () => {
-  await db.venue.update({ where: { id: venue.id }, data: { telegramChatId: null } });
+  await db.venue.update({
+    where: { id: venue.id },
+    data: { telegramChatId: null, staffLocale: "ru" },
+  });
   await db.gift.deleteMany({ where: { fromUserId: { in: users.map((u) => u.id) } } });
   await db.user.deleteMany({ where: { id: { in: users.map((u) => u.id) } } });
   await db.$disconnect();
@@ -68,7 +71,10 @@ describe("бот заведения", () => {
     expect(await orders.link("WRONG1", "-1001")).toBeNull();
     const code = await createLinkCode(redis, venue.id);
     expect(code).toMatch(/^[A-Z2-9]{6}$/);
-    expect(await orders.link(code.toLowerCase(), "-1001")).toBe(venue.name);
+    expect(await orders.link(code.toLowerCase(), "-1001")).toEqual({
+      name: venue.name,
+      locale: "ru",
+    });
     expect(await orders.link(code, "-1002")).toBeNull(); // одноразовый
     expect(sent.filter((m) => m.text.includes("4821"))).toHaveLength(1);
     expect(await orders.announce(g.id)).toBe(false);
@@ -111,5 +117,25 @@ describe("бот заведения", () => {
       ]),
     );
     expect((await orders.onButton(`redeem:${g.id}`, "-1001")).ok).toBe(false);
+  });
+
+  it("/lang kk: заказ, кнопка и ответы — на казахском, позиция — казахским названием", async () => {
+    expect(await orders.setLocale("-1001", "en")).toContain("/lang");
+    expect(await orders.setLocale("-777", "kk")).toContain("байланбаған");
+    expect(await orders.setLocale("-1001", "KK")).toBe("Дайын: бот қазақша жазады.");
+    expect(await orders.localeOf("-1001")).toBe("kk");
+
+    sent.length = 0;
+    const g = await acceptedGift("table");
+    expect(await orders.announce(g.id)).toBe(true);
+    const [msg] = sent;
+    expect(msg?.text).toContain("Қонаққа сыйлық");
+    expect(msg?.text).toContain(item.nameKk ?? item.name);
+    expect(msg?.text).toContain("7-үстелге апару");
+    expect(msg?.buttons).toEqual([{ text: "Берілді", callback_data: `redeem:${g.id}` }]);
+    const res = await orders.onButton(`redeem:${g.id}`, "-1001");
+    expect(res).toMatchObject({ ok: true, text: "Белгіленді: берілді ✓" });
+
+    expect(await orders.setLocale("-1001", "ru")).toBe("Готово: бот пишет по-русски.");
   });
 });

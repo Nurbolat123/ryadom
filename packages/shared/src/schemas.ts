@@ -145,6 +145,8 @@ export const OfferInputSchema = z
     startsAt: z.coerce.date(),
     endsAt: z.coerce.date(),
     isPaid: z.boolean().default(false),
+    /** Показ по интересам: только людям с согласием (adsConsent) и хотя бы одним из интересов. */
+    interestIds: z.array(z.string().min(1).max(40)).max(10).default([]),
   })
   .refine((o) => o.endsAt > o.startsAt, { message: "period", path: ["endsAt"] })
   .refine((o) => o.placement !== "event_of_day" || o.type === "event", {
@@ -169,6 +171,8 @@ export const VenueUpdateSchema = z
     commissionPct: z.number().min(0).max(50).nullable(),
     /** Максимальная стоимость подарка, ₸; null — DEFAULT_MAX_GIFT_AMOUNT. */
     maxGiftAmount: z.number().int().min(100).max(100_000).nullable(),
+    /** Язык Telegram-бота в чате персонала. */
+    staffLocale: LocaleSchema,
   })
   .partial()
   .strict();

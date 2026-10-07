@@ -19,7 +19,7 @@ type Item = {
   address: string | null;
   isPartner: boolean;
   activity: Activity | null;
-  offer: { title: string; isAd: boolean } | null;
+  offer: { title: string; isAd: boolean; byInterests: boolean } | null;
   distanceM?: number;
 };
 type Offer = {
@@ -30,6 +30,7 @@ type Offer = {
   description: string | null;
   endsAt: string;
   isAd: boolean;
+  byInterests: boolean;
 };
 type Page = {
   items: Item[];
@@ -215,6 +216,7 @@ export function PlacesView() {
             <span className={styles.meta}>{page.event.description}</span>
           ) : null}
           {page.event.isAd ? <span className={styles.adTag}>{t("ad")}</span> : null}
+          {page.event.byInterests ? <span className={styles.meta}>{t("byInterests")}</span> : null}
         </Link>
       ) : null}
       {page?.promos.map((o) => (
@@ -228,6 +230,7 @@ export function PlacesView() {
           <span className={styles.promoTitle}>{o.title}</span>
           {o.description ? <span className={styles.meta}>{o.description}</span> : null}
           {o.isAd ? <span className={styles.adTag}>{t("ad")}</span> : null}
+          {o.byInterests ? <span className={styles.meta}>{t("byInterests")}</span> : null}
         </Link>
       ))}
 
@@ -252,6 +255,9 @@ export function PlacesView() {
                 {v.isPartner ? <span className={styles.tag}>{t("partner")}</span> : null}
                 {v.offer ? <span className={styles.offerTag}>{v.offer.title}</span> : null}
                 {v.offer?.isAd ? <span className={styles.adTag}>{t("ad")}</span> : null}
+                {v.offer?.byInterests ? (
+                  <span className={styles.meta}>{t("byInterests")}</span>
+                ) : null}
               </span>
             </Link>
           </li>

@@ -18,6 +18,7 @@ type Offer = {
   description: string | null;
   endsAt: string;
   isAd: boolean;
+  byInterests: boolean;
 };
 export type Place = {
   slug: string;
@@ -86,6 +87,7 @@ export function PlaceView({ place, signedIn }: { place: Place; signedIn: boolean
           <p className={styles.meta}>
             {t("until", { date: date(o.endsAt) })}
             {o.isAd ? ` · ${t("ad")}` : ""}
+            {o.byInterests ? ` · ${t("byInterests")}` : ""}
           </p>
           {o.type === "discount" ? (
             codes[o.id] ? (

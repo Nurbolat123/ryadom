@@ -6,15 +6,34 @@ import { localTimeIn, offerMentionsAlcohol } from "@ryadom/shared";
  * Предложения заведений: скидки, акции, события.
  * - Показываются только одобренные модератором и только в своё время.
  * - Платное размещение помечается «Реклама».
- * - Подбор только по контексту (город, категория, время, заведение). Поведение в знакомствах
- *   и интересы не используются (правило 14); показы и переходы считаются без людей.
+ * - Подбор по контексту (город, категория, время, заведение). Поведение в знакомствах
+ *   не используется никогда (правило 14); показы и переходы считаются без людей.
+ * - Предложение с интересами видят только те, кто включил «Предложения по моим интересам»
+ *   (User.adsConsent) и у кого есть хотя бы один из этих интересов. Без согласия — как будто
+ *   интересов у человека нет: такие предложения просто не показываются.
  * - Реклама алкоголя запрещена: такое предложение нельзя одобрить.
  */
 
-export const activeOfferWhere = (now = new Date()) => ({
+/**
+ * Интересы человека для подбора предложений: только при согласии (adsConsent), иначе null.
+ * null — показываются только предложения без привязки к интересам.
+ */
+export type OfferAudience = readonly string[] | null;
+
+/** Одобрено и идёт сейчас — без учёта аудитории (переходы, отчёты). */
+export const liveOfferWhere = (now = new Date()) => ({
   status: "approved" as const,
   startsAt: { lte: now },
   endsAt: { gt: now },
+});
+
+/** Что можно показать человеку: идёт сейчас и либо без интересов, либо совпадает по интересам. */
+export const activeOfferWhere = (now = new Date(), audience: OfferAudience = null) => ({
+  ...liveOfferWhere(now),
+  OR: [
+    { interests: { none: {} } },
+    ...(audience?.length ? [{ interests: { some: { interestId: { in: [...audience] } } } }] : []),
+  ],
 });
 
 export type OfferView = {
@@ -28,6 +47,8 @@ export type OfferView = {
   endsAt: string;
   /** Платное размещение — «Реклама». */
   isAd: boolean;
+  /** Подобрано по интересам человека (он сам включил это в профиле). */
+  byInterests: boolean;
 };
 
 type OfferRow = {
@@ -41,6 +62,7 @@ type OfferRow = {
   endsAt: Date;
   isPaid: boolean;
   venue: { slug: string; name: string };
+  _count: { interests: number };
 };
 
 export const offerSelect = {
@@ -54,6 +76,7 @@ export const offerSelect = {
   endsAt: true,
   isPaid: true,
   venue: { select: { slug: true, name: true } },
+  _count: { select: { interests: true } },
 } as const;
 
 export const toOfferView = (o: OfferRow, locale: "ru" | "kk"): OfferView => ({
@@ -66,6 +89,7 @@ export const toOfferView = (o: OfferRow, locale: "ru" | "kk"): OfferView => ({
   description: (locale === "kk" && o.descriptionKk) || o.description,
   endsAt: o.endsAt.toISOString(),
   isAd: o.isPaid,
+  byInterests: o._count.interests > 0,
 });
 
 const today = () => new Date(`${localTimeIn("Asia/Almaty").date}T00:00:00Z`);
@@ -98,9 +122,14 @@ export const newOfferCode = () =>
  * Выдать код скидки. Код не связан с человеком (правило 14): в базе только предложение,
  * код и срок. Код действует до конца предложения.
  */
-export const issueOfferCode = async (db: PrismaClient, offerId: string, now = new Date()) => {
+export const issueOfferCode = async (
+  db: PrismaClient,
+  offerId: string,
+  now = new Date(),
+  audience: OfferAudience = null,
+) => {
   const offer = await db.offer.findFirst({
-    where: { id: offerId, type: "discount", ...activeOfferWhere(now) },
+    where: { id: offerId, type: "discount", ...activeOfferWhere(now, audience) },
     select: { id: true, endsAt: true },
   });
   if (!offer) return null;

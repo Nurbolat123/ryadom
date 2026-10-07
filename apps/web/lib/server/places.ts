@@ -7,6 +7,7 @@ import {
   readActivity,
   toOfferView,
   topVenuesOfWeek,
+  type OfferAudience,
   type OfferView,
 } from "@ryadom/places";
 import {
@@ -22,7 +23,8 @@ import { redis } from "../redis";
 /**
  * «Где знакомятся сейчас»: заведения города с живой активностью (только диапазоны, < 3 не
  * показываем), популярными часами и предложениями заведений. Без людей, фото, пола и возраста,
- * без координат заведений. Реклама подбирается только по контексту (город, категория, время).
+ * без координат заведений. Реклама подбирается по контексту (город, категория, время), а по
+ * интересам — только с согласия человека (offerAudience, правило 14).
  */
 
 type Locale = "ru" | "kk";
@@ -35,7 +37,7 @@ export type PlaceItem = {
   address: string | null;
   isPartner: boolean;
   activity: ActivityBucket | null;
-  offer: { title: string; isAd: boolean } | null;
+  offer: { title: string; isAd: boolean; byInterests: boolean } | null;
   /** Только при сортировке «Рядом»: до заведения, округлено до 100 м. */
   distanceM?: number;
 };
@@ -48,6 +50,7 @@ const startOfLocalDay = (now: Date) =>
 export const listPlaces = async (
   q: z.infer<typeof PlacesQuerySchema>,
   locale: Locale,
+  audience: OfferAudience = null,
   now = new Date(),
 ) => {
   const city = cityName(q.city as keyof typeof CITIES);
@@ -75,7 +78,7 @@ export const listPlaces = async (
         select: { id: true, name: true, isPartner: true },
       }),
       prisma.offer.findMany({
-        where: { ...activeOfferWhere(now), venue: { city } },
+        where: { ...activeOfferWhere(now, audience), venue: { city } },
         select: { venueId: true },
       }),
     ]);
@@ -98,7 +101,7 @@ export const listPlaces = async (
       select: { id: true, slug: true, name: true, category: true, address: true, isPartner: true },
     }),
     prisma.offer.findMany({
-      where: { ...activeOfferWhere(now), venueId: { in: ids }, placement: "badge" },
+      where: { ...activeOfferWhere(now, audience), venueId: { in: ids }, placement: "badge" },
       select: { ...offerSelect, venueId: true },
       orderBy: [{ isPaid: "desc" }, { startsAt: "desc" }],
     }),
@@ -119,7 +122,11 @@ export const listPlaces = async (
         address: v.address,
         isPartner: v.isPartner,
         activity: activity[id] ?? null,
-        offer: badge ? { title: toOfferView(badge, locale).title, isAd: badge.isPaid } : null,
+        offer: badge
+          ? (({ title, isAd, byInterests }) => ({ title, isAd, byInterests }))(
+              toOfferView(badge, locale),
+            )
+          : null,
         ...(distanceM === undefined ? {} : { distanceM }),
       },
     ];
@@ -136,14 +143,14 @@ export const listPlaces = async (
     };
     const [promoRows, eventRow] = await Promise.all([
       prisma.offer.findMany({
-        where: { ...activeOfferWhere(now), placement: "promo_card", venue: venueFilter },
+        where: { ...activeOfferWhere(now, audience), placement: "promo_card", venue: venueFilter },
         select: offerSelect,
         orderBy: [{ isPaid: "desc" }, { startsAt: "desc" }],
         take: 2,
       }),
       prisma.offer.findFirst({
         where: {
-          ...activeOfferWhere(now),
+          ...activeOfferWhere(now, audience),
           placement: "event_of_day",
           type: "event",
           // Событие дня — то, что заканчивается сегодня или завтра утром.
@@ -178,7 +185,12 @@ export const listPlaces = async (
 };
 
 /** Страница заведения: активность, популярные часы, предложения. Людей и координат нет. */
-export const placeDetails = async (slug: string, locale: Locale, now = new Date()) => {
+export const placeDetails = async (
+  slug: string,
+  locale: Locale,
+  audience: OfferAudience = null,
+  now = new Date(),
+) => {
   const v = await prisma.venue.findFirst({
     where: { slug, isActive: true },
     select: {
@@ -197,7 +209,7 @@ export const placeDetails = async (slug: string, locale: Locale, now = new Date(
     readActivity(redis),
     popularHours(prisma, v.id, v.timezone, now),
     prisma.offer.findMany({
-      where: { ...activeOfferWhere(now), venueId: v.id },
+      where: { ...activeOfferWhere(now, audience), venueId: v.id },
       select: offerSelect,
       orderBy: [{ isPaid: "desc" }, { startsAt: "desc" }],
     }),
