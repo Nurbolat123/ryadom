@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRealtime } from "@/lib/client/realtime";
 import { api } from "./api";
 import { ErrorText } from "./ErrorText";
+import { usePaymentsEnabled } from "./Features";
 import { PushSettings } from "./PushSettings";
 import { GiftsInbox, type ReceivedGift, type SentGift } from "./GiftsInbox";
 import { SafetySheet } from "./SafetySheet";
@@ -44,6 +45,7 @@ export function InboxView() {
   const t = useTranslations("inbox");
   const tSafety = useTranslations("safety");
   const tp = useTranslations("plus");
+  const payments = usePaymentsEnabled();
   const router = useRouter();
   const [hellos, setHellos] = useState<Hello[] | null>(null);
   const [notices, setNotices] = useState<Notice[]>([]);
@@ -98,9 +100,11 @@ export function InboxView() {
     <div className={ui.body}>
       <div className={social.titleRow}>
         <h1 className={ui.title}>{t("title")}</h1>
-        <Link href="/plus" className={social.plusBadge}>
-          {tp("title")}
-        </Link>
+        {payments ? (
+          <Link href="/plus" className={social.plusBadge}>
+            {tp("title")}
+          </Link>
+        ) : null}
       </div>
 
       <PushSettings placement="card" />

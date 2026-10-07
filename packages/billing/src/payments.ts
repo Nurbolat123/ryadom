@@ -110,6 +110,36 @@ export class StubPaymentProvider implements PaymentProvider {
   }
 }
 
+/**
+ * Оплата выключена (PAYMENT_PROVIDER=none): закрытый тест без ИП и мерчанта Kaspi.
+ * «Плюс», покупка суперприветов и «Угостить» скрыты и на сервере отвечают payments_disabled;
+ * всё остальное работает бесплатно. Платежей нет, поэтому и возвращать нечего.
+ */
+export class DisabledPaymentProvider implements PaymentProvider {
+  readonly name = "none";
+  readonly supportsRecurring = false;
+
+  async createPayment(): Promise<PaymentStart> {
+    throw new Error("Оплата выключена (PAYMENT_PROVIDER=none)");
+  }
+
+  async getStatus(): Promise<PaymentState> {
+    return "failed";
+  }
+
+  async refund(): Promise<{ refundId: string }> {
+    throw new Error("Оплата выключена (PAYMENT_PROVIDER=none)");
+  }
+
+  async parseWebhook() {
+    return null;
+  }
+}
+
+/** Включена ли оплата: false при PAYMENT_PROVIDER=none. */
+export const paymentsEnabled = (env: Record<string, string | undefined> = process.env) =>
+  (env.PAYMENT_PROVIDER ?? "stub") !== "none";
+
 let provider: PaymentProvider | null = null;
 
 export const getPaymentProvider = (): PaymentProvider => {
@@ -119,8 +149,12 @@ export const getPaymentProvider = (): PaymentProvider => {
     provider = createKaspiFromEnv();
     return provider;
   }
+  if (kind === "none") {
+    provider = new DisabledPaymentProvider();
+    return provider;
+  }
   if (kind !== "stub")
-    throw new Error(`PAYMENT_PROVIDER=${kind} не поддерживается (stub или kaspi)`);
+    throw new Error(`PAYMENT_PROVIDER=${kind} не поддерживается (stub, kaspi или none)`);
   if (process.env.NODE_ENV === "production") {
     throw new Error("Заглушка оплаты запрещена в продакшене (PAYMENT_PROVIDER=kaspi)");
   }

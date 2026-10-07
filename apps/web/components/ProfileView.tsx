@@ -9,6 +9,7 @@ import { currentEndpoint } from "@/lib/client/pwa";
 import { api } from "./api";
 import styles from "./checkin.module.css";
 import { ErrorText } from "./ErrorText";
+import { usePaymentsEnabled } from "./Features";
 import { LanguageSwitch } from "./LanguageSwitch";
 import { PushSettings } from "./PushSettings";
 import social from "./social.module.css";
@@ -23,6 +24,7 @@ type Props = {
 export function ProfileView({ user, interests }: Props) {
   const t = useTranslations("profile");
   const tc = useTranslations("common");
+  const payments = usePaymentsEnabled();
   const router = useRouter();
   const [name, setName] = useState(user.displayName);
   const [about, setAbout] = useState(user.about);
@@ -167,9 +169,11 @@ export function ProfileView({ user, interests }: Props) {
       </button>
 
       <nav className={social.profileLinks}>
-        <Link href="/plus" className={ui.link}>
-          {t("plus")}
-        </Link>
+        {payments ? (
+          <Link href="/plus" className={ui.link}>
+            {t("plus")}
+          </Link>
+        ) : null}
         {user.isAdmin ? (
           <Link href="/admin" className={ui.link}>
             {t("admin")}

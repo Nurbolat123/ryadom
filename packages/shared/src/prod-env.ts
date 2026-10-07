@@ -26,8 +26,13 @@ export const checkProductionEnv = (env: Env, service: EnvService): EnvIssue[] =>
 
   // Оплата: web создаёт заказы, realtime делает возвраты и продления.
   if (service !== "bot") {
-    if (env.PAYMENT_PROVIDER !== "kaspi")
-      error("PAYMENT_PROVIDER", "в продакшене только kaspi (заглушка оплаты запрещена)");
+    if (env.PAYMENT_PROVIDER === "none")
+      warn(
+        "PAYMENT_PROVIDER",
+        "оплата выключена: «Плюс», суперприветы за деньги и «Угостить» скрыты",
+      );
+    else if (env.PAYMENT_PROVIDER !== "kaspi")
+      error("PAYMENT_PROVIDER", "kaspi или none (заглушка оплаты запрещена)");
     else {
       if (!isHttps(env.KASPI_API_URL)) error("KASPI_API_URL", "нужен адрес https:// от Kaspi");
       for (const key of ["KASPI_MERCHANT_ID", "KASPI_API_KEY", "KASPI_WEBHOOK_SECRET"])

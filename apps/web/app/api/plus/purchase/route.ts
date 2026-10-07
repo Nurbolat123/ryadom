@@ -10,6 +10,7 @@ const STATUS = {
   auto_renew_unavailable: 400,
   rate_limited: 429,
   payment_failed: 402,
+  payments_disabled: 403,
 } as const;
 
 /** Купить «Плюс» или суперприветы. Автопродление — только явной галочкой. */

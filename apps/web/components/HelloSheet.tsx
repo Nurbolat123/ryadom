@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { api } from "./api";
 import styles from "./checkin.module.css";
 import { ErrorText } from "./ErrorText";
+import { usePaymentsEnabled } from "./Features";
 import type { Person } from "./PeopleList";
 import social from "./social.module.css";
 import ui from "./ui.module.css";
@@ -24,6 +25,7 @@ export function HelloSheet({
   const t = useTranslations("helloSheet");
   const tChat = useTranslations("chat");
   const tPlus = useTranslations("plus");
+  const payments = usePaymentsEnabled();
   const [isSuper, setIsSuper] = useState(false);
   const [message, setMessage] = useState("");
   const [superLeft, setSuperLeft] = useState<number | null>(null);
@@ -111,7 +113,7 @@ export function HelloSheet({
         </label>
         <p className={ui.note}>{t("once")}</p>
         <ErrorText code={error} />
-        {error === "hello_limit" || error === "no_super_hellos" ? (
+        {payments && (error === "hello_limit" || error === "no_super_hellos") ? (
           <Link href="/plus" className={ui.link}>
             {tPlus("more")}
           </Link>

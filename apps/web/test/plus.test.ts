@@ -19,6 +19,7 @@ const { POST: hello } = await import("@/app/api/people/[id]/hello/route");
 const { POST: gift } = await import("@/app/api/people/[id]/gift/route");
 const { GET: people } = await import("@/app/api/here/people/route");
 const { POST: block } = await import("@/app/api/people/[id]/block/route");
+const { GET: giftMenu } = await import("@/app/api/here/menu/route");
 const { redis } = await import("@/lib/redis");
 const { startSession } = await import("@/lib/server/session");
 
@@ -383,5 +384,38 @@ describe("подарок через страницу оплаты", () => {
     expect(await prisma.gift.count({ where: { fromUserId: a } })).toBe(0);
     expect(stub.refunds.has(paymentId)).toBe(true);
     expect((await json(await purchaseGet(post(), ctx("id", purchaseId)))).status).toBe("refunded");
+  });
+});
+
+describe("оплата выключена (PAYMENT_PROVIDER=none)", () => {
+  const saved = process.env.PAYMENT_PROVIDER;
+  beforeEach(() => {
+    process.env.PAYMENT_PROVIDER = "none";
+  });
+  afterAll(() => {
+    if (saved === undefined) delete process.env.PAYMENT_PROVIDER;
+    else process.env.PAYMENT_PROVIDER = saved;
+  });
+
+  it("«Плюс», меню «Угостить» и подарок недоступны, заказов не создаётся", async () => {
+    const [a, b] = [await mkUser(), await mkUser()];
+    await here(a);
+    await here(b);
+    const res = await buy(a, "plus_week");
+    expect(res.status).toBe(403);
+    expect(await json(res)).toMatchObject({ error: "payments_disabled" });
+    await as(a);
+    expect((await giftMenu()).status).toBe(403);
+    expect((await gift(post({ menuItemId: coffee.id }), ctx("id", b))).status).toBe(403);
+    expect(await prisma.purchase.count({ where: { userId: a } })).toBe(0);
+  });
+
+  it("бесплатное работает: привет и список людей", async () => {
+    const [a, b] = [await mkUser(), await mkUser()];
+    await here(a);
+    await here(b);
+    expect((await sayHello(a, b)).status).toBe(201);
+    await as(a);
+    expect((await people()).status).toBe(200);
   });
 });

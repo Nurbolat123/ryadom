@@ -13,6 +13,7 @@ const STATUS = {
   gift_daily_limit: 429,
   rate_limited: 429,
   payment_failed: 402,
+  payments_disabled: 403,
 } as const;
 
 /** Угостить: оплата сразу, при отказе или через 2 часа без ответа — возврат. */

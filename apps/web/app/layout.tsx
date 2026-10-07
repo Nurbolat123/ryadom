@@ -7,6 +7,8 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getTranslations } from "next-intl/server";
+import { paymentsEnabled } from "@ryadom/billing";
+import { FeaturesProvider } from "@/components/Features";
 import { PwaSetup } from "@/components/PwaSetup";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -41,8 +43,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     <html lang={locale}>
       <body>
         <NextIntlClientProvider>
-          {children}
-          <PwaSetup />
+          <FeaturesProvider value={{ payments: paymentsEnabled() }}>
+            {children}
+            <PwaSetup />
+          </FeaturesProvider>
         </NextIntlClientProvider>
       </body>
     </html>

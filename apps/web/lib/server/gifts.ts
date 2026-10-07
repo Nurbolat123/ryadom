@@ -1,4 +1,4 @@
-import { getPaymentProvider, giftDescription } from "@ryadom/billing";
+import { getPaymentProvider, giftDescription, paymentsEnabled } from "@ryadom/billing";
 import { Prisma, prisma, type Purchase } from "@ryadom/db";
 import { closePendingGift, commissionFor, newPickupCode, publishGiftEvent } from "@ryadom/gifts";
 import { getPresence, publishUserEvent } from "@ryadom/presence";
@@ -49,8 +49,10 @@ export const giftMenu = async (
   userId: string,
   locale: "ru" | "kk",
 ): Promise<
-  { ok: true; menu: GiftMenu } | { ok: false; error: "not_checked_in" | "not_partner" }
+  | { ok: true; menu: GiftMenu }
+  | { ok: false; error: "not_checked_in" | "not_partner" | "payments_disabled" }
 > => {
+  if (!paymentsEnabled()) return { ok: false, error: "payments_disabled" };
   const presence = await getPresence(redis, userId);
   if (!presence) return { ok: false, error: "not_checked_in" };
   const venue = await prisma.venue.findUnique({ where: { id: presence.venueId } });
@@ -77,7 +79,8 @@ export type SendGiftError =
   | "gift_already_sent"
   | "gift_daily_limit"
   | "rate_limited"
-  | "payment_failed";
+  | "payment_failed"
+  | "payments_disabled";
 
 export type SendGiftResult =
   | { ok: true; status: "paid"; giftId: string | null }
@@ -112,6 +115,7 @@ export const sendGift = async (
   toId: string,
   input: z.infer<typeof GiftInputSchema>,
 ): Promise<SendGiftResult> => {
+  if (!paymentsEnabled()) return { ok: false, error: "payments_disabled" };
   if (fromId === toId) return { ok: false, error: "not_found" };
   const presence = await canSeePerson(fromId, toId);
   if (!presence) return { ok: false, error: "not_found" };

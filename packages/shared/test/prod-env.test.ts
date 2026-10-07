@@ -80,4 +80,10 @@ describe("проверка продакшен-настроек", () => {
     expect(text).not.toContain("secret-host");
     expect(text).not.toContain("short-secret");
   });
+  it("оплата выключена (none) — только предупреждение, Kaspi не нужен", () => {
+    const env = { ...ready, PAYMENT_PROVIDER: "none", KASPI_API_KEY: undefined };
+    expect(keys(env, "web")).toEqual([]);
+    expect(keys(env, "realtime")).toEqual([]);
+    expect(checkProductionEnv(env, "web").map((i) => i.key)).toContain("PAYMENT_PROVIDER");
+  });
 });

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "./api";
 import styles from "./checkin.module.css";
+import { usePaymentsEnabled } from "./Features";
 import type { HereCheckin } from "./HerePanel";
 import { PeopleList } from "./PeopleList";
 import social from "./social.module.css";
@@ -13,6 +14,7 @@ import ui from "./ui.module.css";
 /** «Рядом»: кто в этом заведении открыт к знакомству. Без чек-ина — только подсказка отметиться. */
 export function NearbyPanel() {
   const t = useTranslations("nearby");
+  const payments = usePaymentsEnabled();
   const [checkin, setCheckin] = useState<HereCheckin | null | undefined>(undefined);
 
   const load = useCallback(async () => {
@@ -32,7 +34,11 @@ export function NearbyPanel() {
             <p className={styles.hereLabel}>{t("title")}</p>
             <h1 className={styles.hereName}>{checkin.venue.name}</h1>
           </section>
-          <PeopleList key={checkin.venue.id} canGift={checkin.venue.isPartner} onEnded={ended} />
+          <PeopleList
+            key={checkin.venue.id}
+            canGift={payments && checkin.venue.isPartner}
+            onEnded={ended}
+          />
         </>
       ) : (
         <div className={styles.center}>

@@ -7,6 +7,7 @@ import { useRealtime } from "@/lib/client/realtime";
 import { api } from "./api";
 import styles from "./checkin.module.css";
 import { ErrorText } from "./ErrorText";
+import { usePaymentsEnabled } from "./Features";
 import { clickOffer } from "./PlacesView";
 import social from "./social.module.css";
 import ui from "./ui.module.css";
@@ -39,6 +40,7 @@ export function HerePanel({
   const t = useTranslations("here");
   const tc = useTranslations("checkin");
   const tp = useTranslations("plus");
+  const payments = usePaymentsEnabled();
   const locale = useLocale();
   const [open, setOpen] = useState(checkin.openToMeet);
   const [busy, setBusy] = useState(false);
@@ -163,7 +165,7 @@ export function HerePanel({
             {tp("boost")}
             <span className={ui.note}> · {tp("boostHint")}</span>
           </button>
-        ) : !boost.plus ? (
+        ) : !boost.plus && payments ? (
           <Link href="/plus" className={`${ui.link} ${social.plusLink}`}>
             {tp("more")}
           </Link>

@@ -1,4 +1,10 @@
-import { cancelAutoRenew, getPaymentProvider, priceFor, productDescription } from "@ryadom/billing";
+import {
+  cancelAutoRenew,
+  getPaymentProvider,
+  paymentsEnabled,
+  priceFor,
+  productDescription,
+} from "@ryadom/billing";
 import { prisma } from "@ryadom/db";
 import { getPresence, publishPresenceEvent } from "@ryadom/presence";
 import {
@@ -61,9 +67,14 @@ export const plusState = async (userId: string) => {
 };
 
 export type BuyError =
-  "invalid_product" | "auto_renew_unavailable" | "rate_limited" | "payment_failed";
+  | "invalid_product"
+  | "auto_renew_unavailable"
+  | "rate_limited"
+  | "payment_failed"
+  | "payments_disabled";
 
 export const buyProduct = async (userId: string, input: z.infer<typeof PurchaseInputSchema>) => {
+  if (!paymentsEnabled()) return { ok: false as const, error: "payments_disabled" as const };
   if (input.autoRenew && (!isRenewable(input.product) || !canAutoRenew()))
     return { ok: false as const, error: "auto_renew_unavailable" as const };
   if (!(await rateLimit("purchase", userId, 20, 3600)).ok)

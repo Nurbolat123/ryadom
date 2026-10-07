@@ -11,6 +11,6 @@ export async function GET() {
   if (!session?.user) return fail(401, "unauthorized");
   const locale = (await getLocale()) === "kk" ? "kk" : "ru";
   const res = await giftMenu(session.user.id, locale);
-  if (!res.ok) return fail(res.error === "not_checked_in" ? 403 : 404, res.error);
+  if (!res.ok) return fail(res.error === "not_partner" ? 404 : 403, res.error);
   return Response.json(res.menu);
 }
