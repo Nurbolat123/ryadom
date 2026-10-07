@@ -9,8 +9,10 @@ const { pricesKZ } = await import("./prices");
 const { venues } = await import("./venues");
 
 /**
- * Сид для разработки. Идемпотентный: можно запускать повторно.
+ * Сид. Идемпотентный: можно запускать повторно.
  * Пользователей не создаёт — они появятся после регистрации (этап 3).
+ * В продакшене (NODE_ENV=production) — только интересы и цены: тестовые заведения с меню
+ * там не нужны, настоящие приходят из импорта OpenStreetMap и админки.
  */
 const db = createPrismaClient();
 
@@ -82,7 +84,9 @@ async function seedVenues() {
 try {
   await seedInterests();
   await seedPrices();
-  await seedVenues();
+  if (process.env.NODE_ENV === "production")
+    console.info("seed: продакшен — тестовые заведения пропущены");
+  else await seedVenues();
   console.info("seed: готово");
 } finally {
   await db.$disconnect();

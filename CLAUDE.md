@@ -366,5 +366,16 @@ PostGIS-колонки (`Venue.location`, `Venue.geofence`) Prisma не чита
 | `pnpm typecheck` | TypeScript strict во всех пакетах |
 | `pnpm lint` | ESLint |
 | `pnpm format` | Prettier |
+| `pnpm check:env` | чего не хватает для продакшена по каждому сервису (значения секретов не печатаются) |
+
+На каждый пуш в `main` GitHub Actions (`.github/workflows/ci.yml`) прогоняет типы, линтер, все тесты и сборку Docker-образа.
+
+**Запуск на сервере** (инструкция — `deploy/README.md`)
+- Один образ (`Dockerfile`) для web, realtime, бота и служебных команд; `docker-compose.prod.yml` поднимает их вместе с Postgres+PostGIS, Redis и Caddy (HTTPS сам, наружу только 80/443). Настройки — `.env` по образцу `deploy/env.production.example`.
+- При `NODE_ENV=production` каждый сервис при старте проверяет настройки (`packages/shared/src/prod-env.ts`) и с ошибками не запускается: заглушки SMS, селфи и оплаты, пароль базы из примера, слабая `RATE_LIMIT_SALT`, адрес без https. Для закрытого теста заглушки SMS и селфи можно разрешить явно (`ALLOW_CONSOLE_SMS=1`, `ALLOW_STUB_VERIFICATION=1`); код входа и тогда на экран не выводится.
+- Фото в продакшене — `PHOTO_STORAGE=s3` (S3-совместимое хранилище в Казахстане, переменные `S3_*`; подпись AWS SigV4 без SDK, `apps/web/lib/server/storage.ts`).
+- В продакшен-сборке браузер подключается к realtime по адресу сайта по WebSocket (`NEXT_PUBLIC_REALTIME_URL=same-origin`, Caddy отдаёт `/socket.io` в realtime). Панели тестовой геолокации и кода на экране нет.
+- `pnpm db:seed` в продакшене создаёт только интересы и цены, без тестовых заведений.
+- Резервные копии — `deploy/backup.sh` (cron каждую ночь), импорт заведений — cron раз в неделю; строки для crontab в `deploy/README.md`.
 
 **Бот:** `pnpm dev:bot`; нужен `TELEGRAM_BOT_TOKEN` в `.env` (см. «Telegram-бот заведения»). Без токена бот просто не стартует.

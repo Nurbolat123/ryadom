@@ -1,6 +1,9 @@
 import { createPrismaClient } from "@ryadom/db";
+import { assertProductionEnv } from "@ryadom/shared";
 import { Redis } from "ioredis";
 import { createRealtime } from "./server";
+
+assertProductionEnv("realtime");
 
 const port = Number(process.env.REALTIME_PORT ?? 4000);
 const redisUrl = process.env.REDIS_URL ?? "redis://localhost:6379";

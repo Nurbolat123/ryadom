@@ -1,5 +1,6 @@
 import { createPrismaClient } from "@ryadom/db";
 import { GIFT_CHANNEL, parseGiftEvent } from "@ryadom/gifts";
+import { assertProductionEnv } from "@ryadom/shared";
 import { Bot, InlineKeyboard } from "grammy";
 import { Redis } from "ioredis";
 import { createOfferCommands } from "./offers";
@@ -14,6 +15,7 @@ import { TEXTS, textsFor } from "./texts";
  * - /lang kk|ru — язык бота в этом чате (по умолчанию русский).
  * Логи без имён, телефонов и текстов.
  */
+assertProductionEnv("bot");
 const token = process.env.TELEGRAM_BOT_TOKEN;
 
 if (!token) {

@@ -11,11 +11,12 @@
     "link": "dotenv -e ../../.env -- tsx src/link.ts"
   },
   "dependencies": {
-    "grammy": "^1.33.0",
     "@ryadom/db": "workspace:*",
     "@ryadom/gifts": "workspace:*",
     "@ryadom/places": "workspace:*",
     "@ryadom/presence": "workspace:*",
+    "@ryadom/shared": "workspace:*",
+    "grammy": "^1.33.0",
     "ioredis": "^5.4.2"
   },
   "devDependencies": {

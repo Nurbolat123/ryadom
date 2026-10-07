@@ -26,10 +26,12 @@ export type RealtimeHandlers = {
 /**
  * Куда подключаться. Если NEXT_PUBLIC_REALTIME_URL пуст или открыт не localhost
  * (например, GitHub Codespaces, где наружу виден только порт сайта), — через адрес сайта:
- * Next проксирует /socket.io в realtime-сервис.
+ * Next проксирует /socket.io в realtime-сервис (только long-polling).
+ * same-origin — продакшен за обратным прокси (Caddy отдаёт /socket.io в realtime): WebSocket на адрес сайта.
  */
 const realtimeTarget = (): { url?: string; transports: ("polling" | "websocket")[] } => {
   const env = process.env.NEXT_PUBLIC_REALTIME_URL;
+  if (env === "same-origin") return { transports: ["websocket", "polling"] };
   const local = ["localhost", "127.0.0.1"].includes(window.location.hostname);
   if (env && (local || !env.includes("localhost")))
     return { url: env, transports: ["websocket", "polling"] };

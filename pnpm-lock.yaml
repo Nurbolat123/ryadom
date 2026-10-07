@@ -38,6 +38,9 @@ importers:
       '@ryadom/presence':
         specifier: workspace:*
         version: link:../../packages/presence
+      '@ryadom/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       grammy:
         specifier: ^1.33.0
         version: 1.46.0

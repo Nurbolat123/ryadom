@@ -1,0 +1,21 @@
+# Обратный прокси: HTTPS-сертификат Let's Encrypt для DOMAIN выпускается и продлевается сам.
+{$DOMAIN} {
+	encode zstd gzip
+
+	# Живой список и уведомления: WebSocket напрямую в realtime.
+	reverse_proxy /socket.io/* realtime:4000
+
+	reverse_proxy web:3000
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	# В журнал Caddy не пишем: там были бы IP и адреса страниц.
+	log {
+		output discard
+	}
+}

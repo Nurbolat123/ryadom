@@ -1,0 +1,14 @@
+# Секреты и локальные данные в образ не попадают.
+.env
+.env.*
+!.env.example
+.data
+dump.rdb
+**/node_modules
+**/.next
+**/*.tsbuildinfo
+**/coverage
+.git
+.devcontainer
+deploy/backups
+packages/db/src/generated
