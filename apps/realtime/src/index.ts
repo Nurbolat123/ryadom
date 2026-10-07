@@ -10,7 +10,7 @@ const origins = (process.env.WEB_ORIGIN ?? "http://localhost:3000").split(",");
 const { CODESPACE_NAME, GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN: CS_DOMAIN } = process.env;
 if (CODESPACE_NAME && CS_DOMAIN) origins.push(`https://${CODESPACE_NAME}-3000.${CS_DOMAIN}`);
 
-const { http } = createRealtime({
+const { http, activity } = createRealtime({
   db: createPrismaClient(),
   redis: new Redis(redisUrl),
   sub: new Redis(redisUrl),
@@ -19,4 +19,6 @@ const { http } = createRealtime({
 
 http.listen(port, () => {
   console.info(`realtime: слушаю :${port}`);
+  // Активность заведений сразу при запуске, дальше — раз в 5 минут.
+  void activity().catch(() => undefined);
 });

@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
+import { AdminNav } from "./AdminNav";
 import { api } from "./api";
 import styles from "./checkin.module.css";
 import { ErrorText } from "./ErrorText";
@@ -60,9 +60,7 @@ export function AdminReports() {
   return (
     <div className={ui.body}>
       <h1 className={ui.title}>{t("title")}</h1>
-      <Link href="/admin/gifts" className={ui.link}>
-        {t("giftsLink")}
-      </Link>
+      <AdminNav />
       <div className={ui.segmented}>
         {(["pending", "resolved"] as const).map((k) => (
           <button

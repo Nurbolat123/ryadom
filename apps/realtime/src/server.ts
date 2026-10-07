@@ -18,6 +18,7 @@ import {
   type PresenceEvent,
   type UserEvent,
 } from "@ryadom/presence";
+import { snapshotActivity } from "@ryadom/places";
 import { sendPush, vapidFromEnv, WebPushSender, type PushSender } from "@ryadom/push";
 import { realtimeTicketKey, RULES, type PushKind } from "@ryadom/shared";
 import type { Redis } from "ioredis";
@@ -57,6 +58,8 @@ export type RealtimeOptions = {
   corsOrigin: string | string[];
   sweepIntervalMs?: number;
   noticeIntervalMs?: number;
+  /** Пересчёт активности для «Где знакомятся сейчас». */
+  activityIntervalMs?: number;
   /** Возвраты за истёкшие подарки. По умолчанию — из PAYMENT_PROVIDER. */
   payments?: PaymentProvider;
   /** Web Push. По умолчанию — VAPID-ключи из .env; без ключей уведомления не отправляются. */
@@ -75,6 +78,7 @@ export const createRealtime = ({
   corsOrigin,
   sweepIntervalMs = 30_000,
   noticeIntervalMs = RULES.noticeTickSeconds * 1000,
+  activityIntervalMs = RULES.activitySnapshotSeconds * 1000,
   payments = getPaymentProvider(),
   push = defaultPushSender(),
 }: RealtimeOptions) => {
@@ -241,14 +245,23 @@ export const createRealtime = ({
     });
   const noticeTimer = setInterval(() => void notices().catch(() => undefined), noticeIntervalMs);
 
+  // «Где знакомятся сейчас»: диапазоны активности и почасовая статистика — раз в 5 минут.
+  const activity = () => snapshotActivity({ db, redis });
+  const activityTimer = setInterval(
+    () => void activity().catch((err: Error) => console.warn("[activity]", err.message)),
+    activityIntervalMs,
+  );
+
   return {
     http,
     io,
     sweep,
     notices,
+    activity,
     close: async () => {
       clearInterval(timer);
       clearInterval(noticeTimer);
+      clearInterval(activityTimer);
       await sub.unsubscribe(PRESENCE_CHANNEL, USER_CHANNEL).catch(() => undefined);
       await new Promise<void>((r) => io.close(() => r()));
     },

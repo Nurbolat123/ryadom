@@ -9,6 +9,7 @@ import styles from "./checkin.module.css";
 import { ErrorText } from "./ErrorText";
 import { announceMatch } from "./MatchOverlay";
 import { PersonCard } from "./PersonCard";
+import { clickOffer } from "./PlacesView";
 import social from "./social.module.css";
 import ui from "./ui.module.css";
 
@@ -27,7 +28,7 @@ export type Person = {
   chatId: string | null;
   giftSent: boolean;
 };
-type Venue = { id: string; name: string; isPartner: boolean };
+type Venue = { id: string; slug: string; name: string; isPartner: boolean };
 export type HereCheckin = {
   venue: Venue;
   openToMeet: boolean;
@@ -62,6 +63,15 @@ export function HerePanel({
   const loading = useRef<Promise<void> | null>(null);
   const again = useRef(false);
   const [boost, setBoost] = useState<Boost | null>(null);
+  const [offers, setOffers] = useState<{ id: string; title: string; isAd: boolean }[]>([]);
+  const tPlaces = useTranslations("places");
+
+  // Предложения этого заведения — показ по контексту (текущее заведение), без данных о человеке.
+  useEffect(() => {
+    void api<{ offers: { id: string; title: string; isAd: boolean }[] }>(
+      `/api/places/${checkin.venue.slug}`,
+    ).then((r) => r.ok && setOffers(r.data.offers));
+  }, [checkin.venue.slug]);
 
   // Несколько сигналов подряд схлопываются в один запрос (плюс ещё один, если пришли во время запроса).
   const loadPeople = useCallback(async () => {
@@ -152,6 +162,18 @@ export function HerePanel({
         <h1 className={styles.hereName}>{checkin.venue.name}</h1>
         <p className={styles.venueMeta}>{tc("until", { time: until })}</p>
       </section>
+
+      {offers.map((o) => (
+        <Link
+          key={o.id}
+          href={`/places/${checkin.venue.slug}`}
+          className={`${ui.card} ${social.hereOffer}`}
+          onClick={() => clickOffer(o.id)}
+        >
+          <strong>{o.title}</strong>
+          {o.isAd ? <span className={ui.note}> · {tPlaces("ad")}</span> : null}
+        </Link>
+      ))}
 
       <button
         type="button"

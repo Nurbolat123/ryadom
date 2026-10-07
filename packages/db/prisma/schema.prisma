@@ -389,25 +389,41 @@ model MenuItem {
 // ───────────────────────── Предложения заведений ─────────────────────────
 
 model Offer {
-  id          String           @id @default(cuid())
-  venueId     String
-  type        OfferType
-  title       String           @db.VarChar(80)
-  description String?          @db.VarChar(500)
-  startsAt    DateTime
-  endsAt      DateTime
-  placement   OfferPlacement
+  id            String           @id @default(cuid())
+  venueId       String
+  type          OfferType
+  title         String           @db.VarChar(80)
+  description   String?          @db.VarChar(500)
+  /// Тексты на казахском (необязательно; без них показывается русский).
+  titleKk       String?          @db.VarChar(80)
+  descriptionKk String?          @db.VarChar(500)
+  startsAt      DateTime
+  endsAt        DateTime
+  placement     OfferPlacement
   /// Платное размещение — помечается «Реклама».
-  isPaid      Boolean          @default(false)
+  isPaid        Boolean          @default(false)
   /// Модерация (в том числе запрет рекламы алкоголя).
-  status      ModerationStatus @default(pending)
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  status        ModerationStatus @default(pending)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
 
   venue       Venue             @relation(fields: [venueId], references: [id], onDelete: Cascade)
   redemptions OfferRedemption[]
+  stats       OfferStatsDaily[]
 
   @@index([venueId, status, startsAt, endsAt])
+}
+
+/// Показы и переходы предложения по дням — для отчёта партнёру. Только счётчики, без людей.
+model OfferStatsDaily {
+  offerId     String
+  day         DateTime @db.Date
+  impressions Int      @default(0)
+  clicks      Int      @default(0)
+
+  offer Offer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  @@id([offerId, day])
 }
 
 /// Погашение скидки по коду. Без userId — не связано с поведением в знакомствах.
@@ -416,6 +432,8 @@ model OfferRedemption {
   offerId    String
   code       String    @unique
   createdAt  DateTime  @default(now())
+  /// Код действует до конца предложения.
+  expiresAt  DateTime
   redeemedAt DateTime?
 
   offer Offer @relation(fields: [offerId], references: [id], onDelete: Cascade)

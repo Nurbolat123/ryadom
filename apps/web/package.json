@@ -19,6 +19,7 @@
     "@ryadom/billing": "workspace:*",
     "@ryadom/db": "workspace:*",
     "@ryadom/gifts": "workspace:*",
+    "@ryadom/places": "workspace:*",
     "@ryadom/presence": "workspace:*",
     "@ryadom/shared": "workspace:*",
     "@ryadom/venues": "workspace:*",

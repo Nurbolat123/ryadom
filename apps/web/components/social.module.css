@@ -506,3 +506,26 @@
 .plusLink {
   align-self: flex-start;
 }
+
+.hereOffer {
+  padding: 14px 18px;
+  color: var(--text);
+  text-decoration: none;
+  border: 1.5px solid var(--warm);
+}
+
+.adminForm {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.adminList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}

@@ -1,3 +1,4 @@
+import { recordCheckin } from "@ryadom/places";
 import {
   findVenuesAtPoint,
   isPointInVenue,
@@ -161,6 +162,8 @@ export const confirmCheckin = async (user: User, venueId: string): Promise<Confi
   await prisma.analyticsEvent.create({
     data: { type: "checkin", venueId, day: new Date(`${todayIn(venue.timezone)}T00:00:00Z`) },
   });
+  // Почасовая статистика заведения — только счётчик (популярные часы, отчёты).
+  await recordCheckin(prisma, venueId, venue.timezone);
 
   const checkin = await toCurrent(presence);
   if (!checkin) return { ok: false, error: "not_here" };

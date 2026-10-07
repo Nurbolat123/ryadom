@@ -63,6 +63,12 @@ export const RULES = {
   reportsPerDay: 10,
   /** Как часто realtime проверяет очередь анонимных уведомлений. */
   noticeTickSeconds: 15,
+  /** «Где знакомятся сейчас»: активность пересчитывается раз в 5 минут, не моментально. */
+  activitySnapshotSeconds: 5 * 60,
+  /** Популярные часы — по статистике за прошлые 6 недель. */
+  popularHoursWeeks: 6,
+  /** Кодов на скидку в сутки на человека. */
+  offerCodesPerDay: 10,
   /** Интересов на человека. */
   maxInterestsPerUser: 10,
 } as const;

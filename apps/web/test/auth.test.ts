@@ -283,8 +283,12 @@ describe("фото, интересы, селфи", () => {
       (await readdir(photoDir, { recursive: true })).filter((f) => f.endsWith(".webp")).length;
     const before = await countFiles();
 
+    const registered = () => prisma.analyticsEvent.count({ where: { type: "registered" } });
+    const registeredBefore = await registered();
     expect((await selfie(form("selfie", await jpegWithGps()))).status).toBe(200);
     expect(await countFiles()).toBe(before);
+    // Воронка: регистрация засчитана один раз, без заведения и без человека.
+    expect(await registered()).toBe(registeredBefore + 1);
     const user = await prisma.user.findUniqueOrThrow({ where: { phone } });
     expect(user.verifiedAt).not.toBeNull();
 

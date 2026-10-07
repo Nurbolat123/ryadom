@@ -1,4 +1,5 @@
 import { prisma } from "@ryadom/db";
+import { track } from "@/lib/server/analytics";
 import { fail } from "@/lib/server/http";
 import { MAX_UPLOAD_BYTES, PhotoError, processPhoto } from "@/lib/server/photo";
 import { getSession } from "@/lib/server/session";
@@ -35,5 +36,7 @@ export async function POST(req: Request) {
   if (verdict !== "approved") return fail(422, "selfie_rejected");
 
   await prisma.user.update({ where: { id: session.user.id }, data: { verifiedAt: new Date() } });
+  // Воронка: регистрация завершена (обезличенно, без заведения).
+  if (!session.user.verifiedAt) await track("registered", null);
   return Response.json({ ok: true, next: "/home" });
 }

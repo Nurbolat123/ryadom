@@ -7,3 +7,4 @@ export * from "./age";
 export * from "./phone";
 export * from "./products";
 export * from "./push";
+export * from "./activity";

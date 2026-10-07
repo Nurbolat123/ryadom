@@ -13,8 +13,20 @@ type InstallEvent = Event & {
 let installEvent: InstallEvent | null = null;
 const installListeners = new Set<() => void>();
 
+/** Воронка: одно «открытие приложения» на сессию вкладки, без данных о человеке. */
+const countAppOpen = () => {
+  try {
+    if (sessionStorage.getItem("ryadom:opened")) return;
+    sessionStorage.setItem("ryadom:opened", "1");
+  } catch {
+    // Без sessionStorage считаем каждую загрузку — не страшно.
+  }
+  void fetch("/api/analytics/open", { method: "POST", keepalive: true }).catch(() => undefined);
+};
+
 /** Регистрация service worker и перехват системного предложения установки (Chrome, Android). */
 export const setupPwa = () => {
+  countAppOpen();
   if (!("serviceWorker" in navigator)) return;
   void navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => undefined);
   window.addEventListener("beforeinstallprompt", (e) => {

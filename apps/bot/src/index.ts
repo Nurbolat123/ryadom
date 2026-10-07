@@ -2,12 +2,14 @@ import { createPrismaClient } from "@ryadom/db";
 import { GIFT_CHANNEL, parseGiftEvent } from "@ryadom/gifts";
 import { Bot, InlineKeyboard } from "grammy";
 import { Redis } from "ioredis";
+import { createOfferCommands } from "./offers";
 import { createOrders } from "./orders";
 
 /**
  * Telegram-бот заведений-партнёров.
  * - /link КОД — привязать чат персонала к заведению (код выдаёт `pnpm bot:link <slug>`).
  * - Принятый подарок приходит заказом: позиция, код выдачи, столик и кнопка «Выдано».
+ * - /redeem КОД — погасить код скидки по предложению; /report — отчёт по предложениям за 7 дней.
  * Логи без имён, телефонов и текстов.
  */
 const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -35,12 +37,20 @@ const orders = createOrders({
   },
 });
 
+const offers = createOfferCommands(db);
+
 bot.command("start", (ctx) =>
   ctx.reply(
     "Бот заведения «рядом». Сюда приходят заказы подарков для гостей.\n" +
-      "Чтобы привязать этот чат к заведению, отправьте /link КОД (код выдаёт администратор «рядом»).",
+      "Чтобы привязать этот чат к заведению, отправьте /link КОД (код выдаёт администратор «рядом»).\n" +
+      "Гость показал код скидки — отправьте /redeem КОД. Отчёт по предложениям — /report.",
   ),
 );
+
+bot.command("redeem", async (ctx) =>
+  ctx.reply(await offers.redeem(String(ctx.chat.id), ctx.match ?? "")),
+);
+bot.command("report", async (ctx) => ctx.reply(await offers.report(String(ctx.chat.id))));
 
 bot.command("link", async (ctx) => {
   const code = ctx.match?.trim();

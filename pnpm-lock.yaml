@@ -32,6 +32,9 @@ importers:
       '@ryadom/gifts':
         specifier: workspace:*
         version: link:../../packages/gifts
+      '@ryadom/places':
+        specifier: workspace:*
+        version: link:../../packages/places
       '@ryadom/presence':
         specifier: workspace:*
         version: link:../../packages/presence
@@ -72,6 +75,9 @@ importers:
       '@ryadom/gifts':
         specifier: workspace:*
         version: link:../../packages/gifts
+      '@ryadom/places':
+        specifier: workspace:*
+        version: link:../../packages/places
       '@ryadom/presence':
         specifier: workspace:*
         version: link:../../packages/presence
@@ -133,6 +139,9 @@ importers:
       '@ryadom/gifts':
         specifier: workspace:*
         version: link:../../packages/gifts
+      '@ryadom/places':
+        specifier: workspace:*
+        version: link:../../packages/places
       '@ryadom/presence':
         specifier: workspace:*
         version: link:../../packages/presence
@@ -256,6 +265,34 @@ importers:
       '@ryadom/db':
         specifier: workspace:*
         version: link:../db
+      '@ryadom/shared':
+        specifier: workspace:*
+        version: link:../shared
+      ioredis:
+        specifier: ^5.4.2
+        version: 5.11.1
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.20.5
+      dotenv:
+        specifier: ^16.4.7
+        version: 16.6.1
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.5)
+
+  packages/places:
+    dependencies:
+      '@ryadom/db':
+        specifier: workspace:*
+        version: link:../db
+      '@ryadom/presence':
+        specifier: workspace:*
+        version: link:../presence
       '@ryadom/shared':
         specifier: workspace:*
         version: link:../shared

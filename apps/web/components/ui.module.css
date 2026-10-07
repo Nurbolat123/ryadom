@@ -277,3 +277,15 @@
   text-align: left;
   cursor: pointer;
 }
+
+a.chip {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+a.chip[aria-current="page"] {
+  background: var(--coral);
+  border-color: var(--coral);
+  color: #fff;
+}

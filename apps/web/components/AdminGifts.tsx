@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
+import { AdminNav } from "./AdminNav";
 import { api } from "./api";
 import { ErrorText } from "./ErrorText";
 import { useMoney } from "./GiftSheet";
@@ -36,9 +36,7 @@ export function AdminGifts() {
   return (
     <div className={ui.body}>
       <h1 className={ui.title}>{t("giftsTitle")}</h1>
-      <Link href="/admin" className={ui.link}>
-        {t("reportsLink")}
-      </Link>
+      <AdminNav />
       <ErrorText code={error} />
       {data ? <p className={ui.note}>{t("giftsPeriod", { days: data.days })}</p> : null}
       {data?.venues.length === 0 ? <p className={ui.hint}>{t("giftsEmpty")}</p> : null}

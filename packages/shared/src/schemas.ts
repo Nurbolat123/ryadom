@@ -111,3 +111,34 @@ export const PurchaseInputSchema = z.object({
   ]),
   autoRenew: z.boolean().default(false),
 });
+
+/** «Где знакомятся сейчас». Точка человека — только для сортировки «Рядом», не сохраняется. */
+export const PlacesQuerySchema = z.object({
+  city: z.enum(["almaty", "astana"]),
+  category: z.enum(VenueCategory).optional(),
+  sort: z.enum(["activity", "near"]).default("activity"),
+  near: z
+    .object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) })
+    .optional(),
+  offset: z.number().int().min(0).max(10_000).default(0),
+});
+
+/** Предложение заведения (админка). Создаётся на модерации. */
+export const OfferInputSchema = z
+  .object({
+    venueSlug: z.string().min(1).max(120),
+    type: z.enum(["discount", "event", "promo"]),
+    placement: z.enum(["badge", "promo_card", "event_of_day"]),
+    title: z.string().trim().min(3).max(80),
+    description: z.string().trim().max(500).optional(),
+    titleKk: z.string().trim().max(80).optional(),
+    descriptionKk: z.string().trim().max(500).optional(),
+    startsAt: z.coerce.date(),
+    endsAt: z.coerce.date(),
+    isPaid: z.boolean().default(false),
+  })
+  .refine((o) => o.endsAt > o.startsAt, { message: "period", path: ["endsAt"] })
+  .refine((o) => o.placement !== "event_of_day" || o.type === "event", {
+    message: "event_of_day",
+    path: ["placement"],
+  });

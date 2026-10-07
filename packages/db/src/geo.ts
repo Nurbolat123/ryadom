@@ -88,6 +88,28 @@ export const findVenuesAtPoint = async (
     ORDER BY ST_Distance("location", ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography)
     LIMIT ${limit}`;
 
+/**
+ * Заведения города от ближайшего к точке человека — для сортировки «Рядом» в «Где знакомятся сейчас».
+ * Точка человека не сохраняется; расстояние до заведения округляется до 100 м.
+ */
+export const venuesNearPoint = async (
+  db: RawDb,
+  city: string,
+  category: string | null,
+  [lng, lat]: LngLat,
+  limit: number,
+  offset = 0,
+): Promise<{ id: string; distanceM: number }[]> =>
+  db.$queryRaw<{ id: string; distanceM: number }[]>`
+    SELECT "id",
+      (ROUND(ST_Distance("location", ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography) / 100) * 100)::int
+        AS "distanceM"
+    FROM "Venue"
+    WHERE "isActive" AND "city" = ${city} AND "location" IS NOT NULL
+      AND (${category}::text IS NULL OR "category"::text = ${category}::text)
+    ORDER BY ST_Distance("location", ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography)
+    LIMIT ${limit} OFFSET ${offset}`;
+
 export type SourceVenueInput = {
   source: "osm" | "dgis";
   sourceId: string;
