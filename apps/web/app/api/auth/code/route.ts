@@ -1,6 +1,7 @@
 import { normalizePhone } from "@ryadom/shared";
 import { clientIp } from "@/lib/rate-limit";
 import { fail, readJson } from "@/lib/server/http";
+import { requestLocale } from "@/lib/server/locale";
 import { requestLoginCode } from "@/lib/server/otp";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +12,7 @@ export async function POST(req: Request) {
   const phone = typeof body?.phone === "string" ? normalizePhone(body.phone) : null;
   if (!phone) return fail(400, "invalid_phone");
 
-  const res = await requestLoginCode(phone, clientIp(req));
+  const res = await requestLoginCode(phone, clientIp(req), await requestLocale());
   if (!res.ok) {
     return fail(429, res.error, { retryAfterSec: res.retryAfterSec });
   }

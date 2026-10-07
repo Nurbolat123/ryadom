@@ -3,9 +3,11 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { api } from "./api";
+import ui from "./ui.module.css";
 import styles from "./welcome.module.css";
 
-export function LanguageSwitch() {
+/** Русский / Қазақша. variant="dark" — на тёмном приветственном экране, "light" — в профиле. */
+export function LanguageSwitch({ variant = "dark" }: { variant?: "dark" | "light" }) {
   const locale = useLocale();
   const t = useTranslations("language");
   const router = useRouter();
@@ -15,9 +17,20 @@ export function LanguageSwitch() {
     router.refresh();
   };
   return (
-    <div className={styles.lang} role="group" aria-label={t("label")}>
+    <div
+      className={variant === "dark" ? styles.lang : ui.segmented}
+      role="group"
+      aria-label={t("label")}
+    >
       {(["ru", "kk"] as const).map((l) => (
-        <button key={l} type="button" aria-pressed={l === locale} onClick={() => set(l)} lang={l}>
+        <button
+          key={l}
+          type="button"
+          className={variant === "dark" ? undefined : ui.choice}
+          aria-pressed={l === locale}
+          onClick={() => set(l)}
+          lang={l}
+        >
           {t(l)}
         </button>
       ))}

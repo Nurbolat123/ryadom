@@ -11,7 +11,12 @@ export const dynamic = "force-dynamic";
 const CIRCLES = [140, 240, 360, 500, 660];
 
 /** Приветственный экран: логотип, слоган, «Начать», «Где знакомятся сейчас», строка доверия. */
-export default async function Welcome() {
+export default async function Welcome({
+  searchParams,
+}: {
+  searchParams: Promise<{ deleted?: string }>;
+}) {
+  const { deleted } = await searchParams;
   const t = await getTranslations();
   const session = await getSession();
   const startHref = session ? await nextPath(session) : "/login";
@@ -46,6 +51,11 @@ export default async function Welcome() {
             {t("welcome.places")}
           </Link>
         </div>
+        {deleted && !session ? (
+          <p className={styles.trust} role="status">
+            {t("welcome.deleted")}
+          </p>
+        ) : null}
         <p className={styles.trust}>{t("welcome.trust")}</p>
       </main>
     </div>

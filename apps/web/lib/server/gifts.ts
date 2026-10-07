@@ -1,4 +1,4 @@
-import { getPaymentProvider } from "@ryadom/billing";
+import { getPaymentProvider, giftDescription } from "@ryadom/billing";
 import { Prisma, prisma, type Purchase } from "@ryadom/db";
 import { closePendingGift, commissionFor, newPickupCode, publishGiftEvent } from "@ryadom/gifts";
 import { getPresence, publishUserEvent } from "@ryadom/presence";
@@ -152,6 +152,10 @@ export const sendGift = async (
     if (today + todayPending >= RULES.giftsPerSenderPerDay)
       return { ok: false, error: "gift_daily_limit" };
 
+    const { locale: fromLocale } = await prisma.user.findUniqueOrThrow({
+      where: { id: fromId },
+      select: { locale: true },
+    });
     const pct = venue.commissionPct === null ? defaultCommissionPct() : Number(venue.commissionPct);
     const draft: GiftDraft = {
       fromUserId: fromId,
@@ -166,7 +170,7 @@ export const sendGift = async (
       userId: fromId,
       amount: item.price,
       currency: item.currency,
-      description: `Подарок в «${venue.name}»`,
+      description: giftDescription(venue.name, fromLocale),
       giftDraft: draft,
     });
     if (res.status === "failed") return { ok: false, error: "payment_failed" };

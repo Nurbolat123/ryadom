@@ -1,7 +1,7 @@
 import { prisma } from "@ryadom/db";
 import { isAdult, ProfileInputSchema, RULES } from "@ryadom/shared";
-import { cookies } from "next/headers";
 import { blockUnderage, isUnderageBlocked } from "@/lib/server/age-block";
+import { requestLocale } from "@/lib/server/locale";
 import { fail, readJson } from "@/lib/server/http";
 import { pathForStep } from "@/lib/server/onboarding";
 import { attachUserToSession, getSession } from "@/lib/server/session";
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     return fail(403, "underage");
   }
 
-  const locale = (await cookies()).get("locale")?.value === "kk" ? "kk" : "ru";
+  const locale = await requestLocale();
   const user = await prisma.user.upsert({
     where: { phone: session.phone },
     create: {

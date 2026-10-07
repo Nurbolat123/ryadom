@@ -24,6 +24,7 @@ export class OverpassVenueSource implements VenueSource {
   readonly kind = "osm" as const;
   readonly attribution = {
     text: "© участники OpenStreetMap",
+    textKk: "© OpenStreetMap қатысушылары",
     license: "ODbL",
     url: "https://www.openstreetmap.org/copyright",
   };

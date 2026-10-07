@@ -17,6 +17,8 @@ export type SourceVenue = {
 export type SourceAttribution = {
   /** Подпись в интерфейсе. */
   text: string;
+  /** Подпись на казахском. */
+  textKk: string;
   license: string;
   url: string;
 };

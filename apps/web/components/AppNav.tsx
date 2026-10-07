@@ -15,9 +15,10 @@ const ICONS = {
     <path d="M12 21s-7-6.3-7-11.5A7 7 0 0 1 19 9.5C19 14.7 12 21 12 21zM12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" />
   ),
   inbox: <path d="M4 5h16v11H8l-4 4V5z" />,
+  profile: <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0" />,
 };
 
-/** Нижняя навигация: Места · Здесь · Приветы. Здесь же — экран взаимной симпатии. */
+/** Нижняя навигация: Места · Здесь · Приветы · Профиль. Здесь же — экран взаимной симпатии. */
 export function AppNav() {
   const t = useTranslations("nav");
   const pathname = usePathname();
@@ -59,6 +60,7 @@ export function AppNav() {
     { key: "places", href: "/places" },
     { key: "here", href: "/home" },
     { key: "inbox", href: "/inbox" },
+    { key: "profile", href: "/profile" },
   ] as const;
 
   return (

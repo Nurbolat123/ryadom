@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { api } from "@/components/api";
@@ -13,8 +14,11 @@ export function InterestsForm({
   max,
   interests,
   initial,
+  edit = false,
 }: {
   step: { current: number; total: number };
+  /** Правка из профиля (регистрация уже пройдена): без шагов, после сохранения — в профиль. */
+  edit?: boolean;
   max: number;
   interests: { id: string; name: string }[];
   initial: string[];
@@ -38,12 +42,18 @@ export function InterestsForm({
     const res = await api("/api/me/interests", { method: "PUT", json: { interestIds: selected } });
     setBusy(false);
     if (!res.ok) return setError(res.error);
-    router.push("/onboarding/selfie");
+    router.push(edit ? "/profile" : "/onboarding/selfie");
   };
 
   return (
     <Screen>
-      <Progress {...step} label={tc("step", step)} />
+      {edit ? (
+        <Link href="/profile" className={ui.link}>
+          ← {tc("back")}
+        </Link>
+      ) : (
+        <Progress {...step} label={tc("step", step)} />
+      )}
       <form className={ui.body} onSubmit={submit}>
         <h1 className={ui.title}>{t("title")}</h1>
         <p className={ui.hint}>{t("hint", { max })}</p>
@@ -67,7 +77,7 @@ export function InterestsForm({
         <ErrorText code={error} />
         <div className={ui.stickyBottom}>
           <button className={`${ui.button} ${ui.primary}`} disabled={busy || selected.length === 0}>
-            {busy ? tc("saving") : tc("next")}
+            {busy ? tc("saving") : edit ? tc("save") : tc("next")}
           </button>
         </div>
       </form>

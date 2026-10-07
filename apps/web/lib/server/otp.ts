@@ -3,7 +3,7 @@ import { RULES } from "@ryadom/shared";
 import { redis } from "../redis";
 import { rateLimit } from "../rate-limit";
 import { phoneKey, sha256 } from "./hash";
-import { ConsoleSmsProvider, getSmsProvider } from "./sms";
+import { ConsoleSmsProvider, getSmsProvider, loginCodeText } from "./sms";
 
 export type RequestCodeResult =
   | { ok: true; resendAfterSec: number; devCode?: string }
@@ -13,7 +13,11 @@ const codeKey = (phone: string) => `otp:code:${phoneKey(phone)}`;
 const cooldownKey = (phone: string) => `otp:cooldown:${phoneKey(phone)}`;
 
 /** Отправить код входа. Не сообщает, зарегистрирован ли номер. */
-export const requestLoginCode = async (phone: string, ip: string): Promise<RequestCodeResult> => {
+export const requestLoginCode = async (
+  phone: string,
+  ip: string,
+  locale: "ru" | "kk" = "ru",
+): Promise<RequestCodeResult> => {
   const cooldown = await redis.ttl(cooldownKey(phone));
   if (cooldown > 0) return { ok: false, error: "cooldown", retryAfterSec: cooldown };
 
@@ -31,7 +35,7 @@ export const requestLoginCode = async (phone: string, ip: string): Promise<Reque
     .set(cooldownKey(phone), "1", "EX", RULES.otpResendCooldownSeconds)
     .exec();
   const sms = getSmsProvider();
-  await sms.sendCode(phone, code);
+  await sms.sendCode(phone, code, loginCodeText(code, locale));
   // Режим разработки без SMS: код показываем прямо на экране (в продакшене — никогда).
   const devCode =
     sms instanceof ConsoleSmsProvider && process.env.NODE_ENV !== "production" ? code : undefined;

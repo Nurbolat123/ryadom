@@ -23,7 +23,7 @@ const offerDismissed = () => {
   }
 };
 
-export function PushSettings({ placement }: { placement: "card" | "row" }) {
+export function PushSettings({ placement }: { placement: "card" | "row" | "settings" }) {
   const t = useTranslations("push");
   const [state, setState] = useState<PushState | null>(null);
   const [busy, setBusy] = useState(false);
@@ -92,6 +92,41 @@ export function PushSettings({ placement }: { placement: "card" | "row" }) {
         </section>
       );
     return null;
+  }
+
+  // Профиль: состояние всегда видно, включить и выключить можно отсюда.
+  if (placement === "settings") {
+    if (state === null) return null;
+    if (state === "off")
+      return (
+        <div className={styles.pushRow}>
+          <span className={ui.note}>{t("offerHint")}</span>
+          <button
+            className={`${ui.button} ${ui.secondary}`}
+            onClick={() => void run(enablePush)}
+            disabled={busy}
+          >
+            {t("enable")}
+          </button>
+          {failed ? <span className={ui.error}>{t("failed")}</span> : null}
+        </div>
+      );
+    const text = {
+      on: "on",
+      denied: "denied",
+      "needs-install": "iosInstall",
+      unavailable: "unavailable",
+    } as const;
+    return (
+      <p className={`${ui.note} ${styles.pushRow}`}>
+        {t(text[state])}{" "}
+        {state === "on" ? (
+          <button className={ui.link} onClick={() => void run(disablePush)} disabled={busy}>
+            {t("disable")}
+          </button>
+        ) : null}
+      </p>
+    );
   }
 
   if (state === "on")

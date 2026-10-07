@@ -2,8 +2,15 @@ import { maskPhone } from "@ryadom/shared";
 
 /** Отправка SMS. Реальный провайдер (например, Mobizon или SMSC.kz) подключается через этот интерфейс. */
 export interface SmsProvider {
-  sendCode(phone: string, code: string): Promise<void>;
+  /** text — готовый текст SMS на языке человека (см. loginCodeText). */
+  sendCode(phone: string, code: string, text: string): Promise<void>;
 }
+
+/** Текст SMS с кодом входа: на языке интерфейса, с которого запросили код. */
+export const loginCodeText = (code: string, locale: "ru" | "kk") =>
+  locale === "kk"
+    ? `рядом: кіру коды ${code}. Кодты ешкімге айтпа.`
+    : `рядом: код входа ${code}. Никому его не сообщай.`;
 
 /**
  * Заглушка для разработки: код пишется в лог сервера.

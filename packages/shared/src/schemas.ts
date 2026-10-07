@@ -66,6 +66,15 @@ export const ProfileInputSchema = z
   })
   .strict();
 
+/** Правка своего профиля: имя, «о себе», согласие на предложения по интересам (правило 14). */
+export const ProfileUpdateSchema = z
+  .object({
+    displayName: DisplayNameSchema.optional(),
+    about: z.string().trim().max(TEXT_LIMITS.about).optional(),
+    adsConsent: z.boolean().optional(),
+  })
+  .strict();
+
 export const REPORT_REASONS = [
   "fake_profile",
   "harassment",

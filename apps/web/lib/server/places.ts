@@ -169,7 +169,11 @@ export const listPlaces = async (
     promos,
     event,
     nextOffset: more ? q.offset + PAGE : null,
-    attribution: new OverpassVenueSource().attribution,
+    attribution: (({ text, textKk, license, url }) => ({
+      text: locale === "kk" ? textKk : text,
+      license,
+      url,
+    }))(new OverpassVenueSource().attribution),
   };
 };
 

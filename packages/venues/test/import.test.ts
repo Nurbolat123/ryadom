@@ -32,7 +32,7 @@ const at = (dx: number, dy: number): [number, number] => [
 /** Источник с заданным списком мест — для сценариев «место пропало». */
 const fixedSource = (venues: SourceVenue[]): VenueSource => ({
   kind: "osm",
-  attribution: { text: "test", license: "ODbL", url: "" },
+  attribution: { text: "test", textKk: "test", license: "ODbL", url: "" },
   fetchVenues: async () => venues,
 });
 

@@ -23,6 +23,7 @@ export default async function InterestsPage() {
       max={RULES.maxInterestsPerUser}
       interests={all.map((i) => ({ id: i.id, name: locale === "kk" ? i.nameKk : i.nameRu }))}
       initial={mine.map((m) => m.interestId)}
+      edit={!!session!.user!.verifiedAt}
     />
   );
 }

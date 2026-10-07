@@ -1,13 +1,9 @@
-import { cookies } from "next/headers";
 import { getRequestConfig } from "next-intl/server";
+import { requestLocale } from "@/lib/server/locale";
 
-export const LOCALES = ["ru", "kk"] as const;
-export type AppLocale = (typeof LOCALES)[number];
-
-/** Язык берётся из cookie «locale» (ставится переключателем и при входе из профиля). */
+/** Язык: выбранный в приложении (cookie «locale»), иначе из настроек браузера. */
 export default getRequestConfig(async () => {
-  const value = (await cookies()).get("locale")?.value;
-  const locale: AppLocale = value === "kk" ? "kk" : "ru";
+  const locale = await requestLocale();
   return {
     locale,
     messages: (await import(`../messages/${locale}.json`)).default,

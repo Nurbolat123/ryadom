@@ -70,7 +70,7 @@ export const buyProduct = async (userId: string, input: z.infer<typeof PurchaseI
     return { ok: false as const, error: "rate_limited" as const };
   const user = await prisma.user.findUniqueOrThrow({
     where: { id: userId },
-    select: { countryCode: true },
+    select: { countryCode: true, locale: true },
   });
   const price = await priceFor(prisma, user.countryCode, input.product);
   if (!price?.isActive) return { ok: false as const, error: "invalid_product" as const };
@@ -80,7 +80,7 @@ export const buyProduct = async (userId: string, input: z.infer<typeof PurchaseI
     autoRenew: input.autoRenew,
     amount: price.amount,
     currency: price.currency,
-    description: productDescription[input.product],
+    description: productDescription(input.product, user.locale),
   });
   if (res.status === "failed") return { ok: false as const, error: "payment_failed" as const };
   return { ok: true as const, ...res };

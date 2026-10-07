@@ -22,7 +22,7 @@ export const PUSH_TEXT: Record<Locale, Record<PushKind, { title: string; body: s
     hello: { title: "рядом", body: "Саған сәлем келді" },
     gift: { title: "рядом", body: "Біреу сені сыйлағысы келеді" },
     sympathy: { title: "рядом", body: "Осы жерде біреуге ұнадың" },
-    match: { title: "рядом", body: "Сендер бір-біріңе ұнадыңдар. Барып сәлемдес" },
+    match: { title: "рядом", body: "Сендер бір-біріңе ұнадыңдар. Жақындап, амандас" },
     message: { title: "рядом", body: "Чатта жаңа хабарлама" },
     plus: { title: "рядом", body: "«Плюс» туралы жаңалық" },
   },

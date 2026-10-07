@@ -21,14 +21,32 @@ import type { PaymentProvider } from "./payments";
 
 type Tx = Prisma.TransactionClient;
 
-export const productDescription: Record<ProductCode, string> = {
-  plus_evening: "Плюс на вечер",
-  plus_week: "Плюс на неделю",
-  plus_month: "Плюс на месяц",
-  plus_3months: "Плюс на 3 месяца",
-  super_hello_1: "Суперпривет",
-  super_hello_5: "5 суперприветов",
+const PRODUCT_TEXT: Record<"ru" | "kk", Record<ProductCode, string>> = {
+  ru: {
+    plus_evening: "Плюс на вечер",
+    plus_week: "Плюс на неделю",
+    plus_month: "Плюс на месяц",
+    plus_3months: "Плюс на 3 месяца",
+    super_hello_1: "Суперпривет",
+    super_hello_5: "5 суперприветов",
+  },
+  kk: {
+    plus_evening: "Плюс кешке",
+    plus_week: "Плюс бір аптаға",
+    plus_month: "Плюс бір айға",
+    plus_3months: "Плюс 3 айға",
+    super_hello_1: "Суперсәлем",
+    super_hello_5: "5 суперсәлем",
+  },
 };
+
+/** Описание покупки для платёжной страницы — на языке человека. */
+export const productDescription = (product: ProductCode, locale: "ru" | "kk" = "ru") =>
+  PRODUCT_TEXT[locale][product];
+
+/** Описание подарка для платёжной страницы. */
+export const giftDescription = (venueName: string, locale: "ru" | "kk" = "ru") =>
+  locale === "kk" ? `«${venueName}» орнындағы сыйлық` : `Подарок в «${venueName}»`;
 
 export const priceFor = (db: PrismaClient, countryCode: string, product: ProductCode) =>
   db.price.findUnique({
@@ -159,7 +177,7 @@ export const processRenewals = async ({
 
   const due = await db.entitlement.findMany({
     where: { autoRenew: true, plusUntil: { lte: now } },
-    include: { user: { select: { countryCode: true, bannedAt: true } } },
+    include: { user: { select: { countryCode: true, bannedAt: true, locale: true } } },
   });
   for (const e of due) {
     const product = e.autoRenewProduct;
@@ -193,7 +211,7 @@ export const processRenewals = async ({
         .chargeRecurring({
           amount: price.amount,
           currency: price.currency,
-          description: productDescription[product],
+          description: productDescription(product, e.user.locale),
           orderId: order.id,
           previousPaymentId: last.paymentId,
         })
