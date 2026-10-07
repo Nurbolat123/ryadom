@@ -18,7 +18,8 @@ import {
   type PresenceEvent,
   type UserEvent,
 } from "@ryadom/presence";
-import { realtimeTicketKey, RULES } from "@ryadom/shared";
+import { sendPush, vapidFromEnv, WebPushSender, type PushSender } from "@ryadom/push";
+import { realtimeTicketKey, RULES, type PushKind } from "@ryadom/shared";
 import type { Redis } from "ioredis";
 import { Server, type Socket } from "socket.io";
 import { deleteExpiredSympathies, processNotices } from "./notices";
@@ -58,6 +59,13 @@ export type RealtimeOptions = {
   noticeIntervalMs?: number;
   /** Возвраты за истёкшие подарки. По умолчанию — из PAYMENT_PROVIDER. */
   payments?: PaymentProvider;
+  /** Web Push. По умолчанию — VAPID-ключи из .env; без ключей уведомления не отправляются. */
+  push?: PushSender | null;
+};
+
+const defaultPushSender = () => {
+  const vapid = vapidFromEnv();
+  return vapid ? new WebPushSender(vapid) : null;
 };
 
 export const createRealtime = ({
@@ -68,6 +76,7 @@ export const createRealtime = ({
   sweepIntervalMs = 30_000,
   noticeIntervalMs = RULES.noticeTickSeconds * 1000,
   payments = getPaymentProvider(),
+  push = defaultPushSender(),
 }: RealtimeOptions) => {
   const http = createServer(async (req, res) => {
     if (req.url === "/health") {
@@ -122,17 +131,37 @@ export const createRealtime = ({
     return presence;
   };
 
+  /**
+   * Push — только если приложение сейчас не на экране ни на одном устройстве
+   * (иначе человек и так видит сигнал в приложении). Видимость сообщает клиент.
+   */
+  const pushIfAway = async (userId: string, kind: PushKind) => {
+    if (!push) return;
+    const sockets = await io.in(userRoom(userId)).fetchSockets();
+    if (sockets.some((s) => s.data.visible === true)) return;
+    await sendPush({ db, redis, sender: push, userId, kind });
+  };
+  const pushLater = (userId: string, kind: PushKind) =>
+    void pushIfAway(userId, kind).catch((err: Error) =>
+      console.warn("[push] ошибка отправки:", err.message),
+    );
+
   io.on("connection", async (socket: Socket) => {
     const userId = socket.data.userId as string;
+    socket.data.visible = socket.handshake.auth?.visible !== false;
     socket.join(userRoom(userId));
-    const presence = await syncRooms(userId);
-    socket.emit("presence", { present: !!presence });
-
+    // Вкладка свернута или снова на экране.
+    socket.on("visibility", (visible: unknown) => {
+      socket.data.visible = visible === true;
+    });
     // Heartbeat клиента: подтверждаем, что отметка ещё действует.
+    // Обработчики — до первого await, иначе ранний heartbeat клиента теряется.
     socket.on("heartbeat", async (ack?: (r: { present: boolean }) => void) => {
       const p = await syncRooms(userId);
       if (typeof ack === "function") ack({ present: !!p });
     });
+    const presence = await syncRooms(userId);
+    socket.emit("presence", { present: !!presence });
   });
 
   const onEvent = async (e: PresenceEvent) => {
@@ -145,6 +174,8 @@ export const createRealtime = ({
   // Личные события: только тип и id чата, без данных о людях.
   const onUserEvent = (e: UserEvent) => {
     const room = io.to(userRoom(e.userId));
+    if (e.type === "match") pushLater(e.userId, "match");
+    else if ((e.type === "inbox" || e.type === "chat") && e.push) pushLater(e.userId, e.push);
     if (e.type === "match") room.emit("match", { chatId: e.chatId });
     else if (e.type === "chat") room.emit("chat:changed", { chatId: e.chatId });
     else if (e.type === "refresh") {
@@ -189,7 +220,10 @@ export const createRealtime = ({
     await processRenewals({
       db,
       payments,
-      notify: (userId) => io.to(userRoom(userId)).emit("inbox:changed"),
+      notify: (userId) => {
+        io.to(userRoom(userId)).emit("inbox:changed");
+        pushLater(userId, "plus");
+      },
     });
   };
   const timer = setInterval(() => void sweep().catch(() => undefined), sweepIntervalMs);
@@ -200,7 +234,10 @@ export const createRealtime = ({
       db,
       redis,
       now,
-      notify: (userId) => io.to(userRoom(userId)).emit("inbox:changed"),
+      notify: (userId) => {
+        io.to(userRoom(userId)).emit("inbox:changed");
+        pushLater(userId, "sympathy");
+      },
     });
   const noticeTimer = setInterval(() => void notices().catch(() => undefined), noticeIntervalMs);
 

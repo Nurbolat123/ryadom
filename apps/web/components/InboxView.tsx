@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRealtime } from "@/lib/client/realtime";
 import { api } from "./api";
 import { ErrorText } from "./ErrorText";
+import { PushSettings } from "./PushSettings";
 import { GiftsInbox, type ReceivedGift, type SentGift } from "./GiftsInbox";
 import { SafetySheet } from "./SafetySheet";
 import social from "./social.module.css";
@@ -101,6 +102,8 @@ export function InboxView() {
           {tp("title")}
         </Link>
       </div>
+
+      <PushSettings placement="card" />
 
       {notices.map((n) =>
         n.kind !== "sympathy_anonymous" ? (
@@ -227,6 +230,8 @@ export function InboxView() {
           ))}
         </ul>
       )}
+
+      <PushSettings placement="row" />
 
       {safety ? (
         <SafetySheet

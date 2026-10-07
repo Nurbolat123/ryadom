@@ -230,7 +230,7 @@ export const createGiftFromPurchase = async (p: Purchase): Promise<string | null
       await tx.purchase.update({ where: { id: p.id }, data: { giftId: g.id } });
       return g;
     });
-    await publishUserEvent(redis, { type: "inbox", userId: d.toUserId });
+    await publishUserEvent(redis, { type: "inbox", userId: d.toUserId, push: "gift" });
     await track("gift_sent", d.venueId);
     return gift.id;
   } catch (err) {

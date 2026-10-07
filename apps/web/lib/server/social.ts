@@ -211,7 +211,7 @@ export const sendHello = async (
       });
     });
     await track(input.isSuper ? "super_hello_sent" : "hello_sent", presence.venueId);
-    await publishUserEvent(redis, { type: "inbox", userId: toId });
+    await publishUserEvent(redis, { type: "inbox", userId: toId, push: "hello" });
     return { ok: true, helloId: hello.id };
   } catch (e) {
     if (e instanceof NoSuperHellos) return { ok: false, error: "no_super_hellos" };
@@ -297,7 +297,7 @@ export const replyToHello = async (userId: string, helloId: string, message: str
   });
   await track("hello_replied", hello.venueId);
   await Promise.all([
-    publishUserEvent(redis, { type: "chat", userId: hello.fromUserId, chatId }),
+    publishUserEvent(redis, { type: "chat", userId: hello.fromUserId, chatId, push: "message" }),
     publishUserEvent(redis, { type: "chat", userId, chatId }),
   ]);
   return { ok: true as const, chatId };

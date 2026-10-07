@@ -36,13 +36,19 @@ const realtimeTarget = (): { url?: string; transports: ("polling" | "websocket")
   return { transports: ["polling"] };
 };
 
-/** Одноразовый билет на каждое (пере)подключение: cookie сессии на другой домен не уходит. */
+const visible = () => document.visibilityState === "visible";
+
+/**
+ * Одноразовый билет на каждое (пере)подключение: cookie сессии на другой домен не уходит.
+ * visible — приложение на экране: тогда push не нужен, сигнал придёт сюда.
+ */
 const withTicket = (cb: (data: object) => void) => {
   fetch("/api/realtime/ticket", { method: "POST" })
     .then((r) => (r.ok ? r.json() : {}))
-    .then((b: { ticket?: string }) => cb({ ticket: b.ticket }))
-    .catch(() => cb({}));
+    .then((b: { ticket?: string }) => cb({ ticket: b.ticket, visible: visible() }))
+    .catch(() => cb({ visible: visible() }));
 };
+const onVisibility = () => socket?.emit("visibility", visible());
 
 const listeners = new Set<{ current: Partial<RealtimeHandlers> }>();
 const each = (fn: (h: Partial<RealtimeHandlers>) => void) =>
@@ -89,10 +95,14 @@ export function useRealtime(handlers: Partial<RealtimeHandlers>, active = true) 
   useEffect(() => {
     if (!active) return;
     listeners.add(ref);
-    socket ??= connect();
+    if (!socket) {
+      socket = connect();
+      document.addEventListener("visibilitychange", onVisibility);
+    }
     return () => {
       listeners.delete(ref);
       if (listeners.size === 0 && socket) {
+        document.removeEventListener("visibilitychange", onVisibility);
         if (timer) clearInterval(timer);
         socket.disconnect();
         socket = null;

@@ -12,14 +12,24 @@ import { Redis } from "ioredis";
 import { io as connect, type Socket } from "socket.io-client";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { StubPaymentProvider } from "@ryadom/billing";
+import type { PushPayload, PushSender, PushTarget } from "@ryadom/push";
 import { createRealtime } from "../src/server";
 
 const db = createPrismaClient();
 const redis = new Redis(process.env.REDIS_URL!);
 const payments = new StubPaymentProvider();
+/** Вместо настоящего push-сервиса — запись того, что ушло бы. */
+const pushed: { target: PushTarget; payload: PushPayload }[] = [];
+const push: PushSender = {
+  send: async (target, payload) => {
+    pushed.push({ target, payload });
+    return { ok: true };
+  },
+};
 const rt = createRealtime({
   db,
   payments,
+  push,
   redis,
   sub: new Redis(process.env.REDIS_URL!),
   corsOrigin: "*",
@@ -51,12 +61,12 @@ const mkUser = async () => {
   return { id: u.id, token };
 };
 
-const open = (token?: string, ticket?: string) =>
+const open = (token?: string, ticket?: string, visible?: boolean) =>
   new Promise<Socket>((resolve, reject) => {
     const s = connect(url, {
       transports: ["websocket"],
       extraHeaders: token ? { cookie: `ryadom_session=${token}` } : {},
-      auth: ticket ? { ticket } : {},
+      auth: { ...(ticket ? { ticket } : {}), ...(visible === undefined ? {} : { visible }) },
       reconnection: false,
     });
     sockets.push(s);
@@ -241,5 +251,56 @@ describe("realtime", () => {
     const changed = once(sb, "people:changed");
     await rt.sweep();
     await changed;
+  });
+
+  it("push: только когда приложение не на экране, общий текст без имён; без вида события — нет", async () => {
+    const a = await mkUser();
+    await db.pushSubscription.create({
+      data: {
+        userId: a.id,
+        endpoint: `https://push.example/${randomUUID()}`,
+        p256dh: "k",
+        auth: "a",
+      },
+    });
+    const clear = async () => {
+      pushed.length = 0;
+      for (const k of await redis.keys(`push-throttle:${a.id}:*`)) await redis.del(k);
+    };
+    const settle = () => new Promise((r) => setTimeout(r, 300));
+
+    // Нет подключений — push уходит.
+    await clear();
+    await publishUserEvent(redis, { type: "inbox", userId: a.id, push: "hello" });
+    await settle();
+    expect(pushed.map((p) => p.payload)).toEqual([
+      { title: "рядом", body: "Тебе пришёл привет", url: "/inbox", tag: "hello" },
+    ]);
+
+    // Вкладка свернута — push уходит; на экране — нет, сигнал придёт в приложение.
+    const s = await open(a.token, undefined, false);
+    await clear();
+    await publishUserEvent(redis, { type: "match", userId: a.id, chatId: "c1" });
+    await settle();
+    expect(pushed.map((p) => p.payload.tag)).toEqual(["match"]);
+    s.emit("visibility", true);
+    await clear();
+    await publishUserEvent(redis, { type: "chat", userId: a.id, chatId: "c1", push: "message" });
+    await settle();
+    expect(pushed).toEqual([]);
+
+    // Событие без вида (например, обновление статуса подарка) push не вызывает.
+    s.emit("visibility", false);
+    await clear();
+    await publishUserEvent(redis, { type: "inbox", userId: a.id });
+    await settle();
+    expect(pushed).toEqual([]);
+
+    // Не чаще раза в минуту на вид: пачка сообщений — одно уведомление.
+    await clear();
+    for (let i = 0; i < 3; i++)
+      await publishUserEvent(redis, { type: "chat", userId: a.id, chatId: "c1", push: "message" });
+    await settle();
+    expect(pushed).toHaveLength(1);
   });
 });

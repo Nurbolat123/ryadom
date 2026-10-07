@@ -136,6 +136,7 @@ export const banUser = async (userId: string) => {
   await prisma.$transaction([
     prisma.user.update({ where: { id: userId }, data: { bannedAt: new Date() } }),
     prisma.session.deleteMany({ where: { userId } }),
+    prisma.pushSubscription.deleteMany({ where: { userId } }),
   ]);
   const ended = await endPresence(redis, userId);
   if (ended) await publishPresenceEvent(redis, { type: "left", venueId: ended.venueId, userId });

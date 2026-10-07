@@ -145,7 +145,7 @@ export const sendMessage = async (userId: string, chatId: string, body: string) 
     return { ok: false as const, error: "rate_limited" as const };
   const m = await prisma.message.create({ data: { chatId, senderId: userId, body } });
   await Promise.all([
-    publishUserEvent(redis, { type: "chat", userId: chat.otherId, chatId }),
+    publishUserEvent(redis, { type: "chat", userId: chat.otherId, chatId, push: "message" }),
     publishUserEvent(redis, { type: "chat", userId, chatId }),
   ]);
   return {

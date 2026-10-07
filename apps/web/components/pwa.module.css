@@ -1,0 +1,65 @@
+.install {
+  position: sticky;
+  bottom: calc(76px + env(safe-area-inset-bottom));
+  z-index: 5;
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 8px 12px;
+  align-items: center;
+  margin-top: 8px;
+  padding: 14px 16px;
+  border-radius: var(--radius-card);
+  background: var(--night);
+  color: #fff;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
+}
+
+.installIcon {
+  border-radius: 12px;
+}
+
+.installText {
+  display: grid;
+  gap: 2px;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.installText span {
+  color: rgb(255 255 255 / 0.75);
+}
+
+.installActions {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.installActions :global(button:last-child) {
+  color: rgb(255 255 255 / 0.85);
+}
+
+.small {
+  min-height: 44px;
+  height: 44px;
+  padding: 0 22px;
+  width: auto;
+}
+
+.pushCard {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  border-radius: var(--radius-card);
+  background: var(--warm);
+  color: var(--night);
+}
+
+.pushRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { AppNav } from "./AppNav";
+import { InstallPrompt } from "./InstallPrompt";
 import { Logo } from "./Logo";
 import styles from "./ui.module.css";
 
@@ -20,6 +21,7 @@ export function Screen({
         {right}
       </header>
       {children}
+      {nav ? <InstallPrompt /> : null}
       {nav ? <AppNav /> : null}
     </main>
   );

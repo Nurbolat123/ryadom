@@ -188,29 +188,30 @@ model User {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  interests        UserInterest[]
-  visits           Visit[]
-  venueSuggestions VenueSuggestion[]
-  sympathiesSent   Sympathy[]        @relation("SympathyFrom")
-  sympathiesGot    Sympathy[]        @relation("SympathyTo")
-  matchesA         Match[]           @relation("MatchUserA")
-  matchesB         Match[]           @relation("MatchUserB")
-  hellosSent       Hello[]           @relation("HelloFrom")
-  hellosGot        Hello[]           @relation("HelloTo")
-  chatsA           Chat[]            @relation("ChatUserA")
-  chatsB           Chat[]            @relation("ChatUserB")
-  messages         Message[]
-  contactExchanges ContactExchange[]
-  purchases        Purchase[]
-  entitlement      Entitlement?
-  giftsSent        Gift[]            @relation("GiftFrom")
-  giftsGot         Gift[]            @relation("GiftTo")
-  blocksMade       Block[]           @relation("BlockBy")
-  blocksGot        Block[]           @relation("BlockOf")
-  reportsMade      Report[]          @relation("ReportBy")
-  sessions         Session[]
-  notices          Notice[]
-  reportsGot       Report[]          @relation("ReportOf")
+  interests         UserInterest[]
+  visits            Visit[]
+  venueSuggestions  VenueSuggestion[]
+  sympathiesSent    Sympathy[]         @relation("SympathyFrom")
+  sympathiesGot     Sympathy[]         @relation("SympathyTo")
+  matchesA          Match[]            @relation("MatchUserA")
+  matchesB          Match[]            @relation("MatchUserB")
+  hellosSent        Hello[]            @relation("HelloFrom")
+  hellosGot         Hello[]            @relation("HelloTo")
+  chatsA            Chat[]             @relation("ChatUserA")
+  chatsB            Chat[]             @relation("ChatUserB")
+  messages          Message[]
+  contactExchanges  ContactExchange[]
+  purchases         Purchase[]
+  entitlement       Entitlement?
+  giftsSent         Gift[]             @relation("GiftFrom")
+  giftsGot          Gift[]             @relation("GiftTo")
+  pushSubscriptions PushSubscription[]
+  blocksMade        Block[]            @relation("BlockBy")
+  blocksGot         Block[]            @relation("BlockOf")
+  reportsMade       Report[]           @relation("ReportBy")
+  sessions          Session[]
+  notices           Notice[]
+  reportsGot        Report[]           @relation("ReportOf")
 }
 
 /// Сессия входа. В cookie лежит случайный токен, в базе — только его SHA-256.
@@ -730,4 +731,20 @@ model AnalyticsEvent {
 
   @@index([venueId, day, type])
   @@index([day, type])
+}
+
+/// Подписка браузера на Web Push (этап 10). Одна строка — один браузер/устройство.
+/// В уведомлениях нет имён и текстов сообщений; подписка удаляется при выходе, бане и ответе 404/410.
+model PushSubscription {
+  id         String    @id @default(cuid())
+  userId     String
+  endpoint   String    @unique
+  p256dh     String
+  auth       String
+  createdAt  DateTime  @default(now())
+  lastSentAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

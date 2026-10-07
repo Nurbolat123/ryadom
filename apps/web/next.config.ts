@@ -28,6 +28,18 @@ const nextConfig: NextConfig = {
       { source: "/socket.io/:path+", destination: `${realtime}/socket.io/:path+` },
     ];
   },
+  // Service worker: всегда свежий файл и область действия на весь сайт.
+  async headers() {
+    return [
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Service-Worker-Allowed", value: "/" },
+        ],
+      },
+    ];
+  },
   serverExternalPackages: ["@prisma/client", "@prisma/adapter-pg", "pg", "sharp"],
 };
 

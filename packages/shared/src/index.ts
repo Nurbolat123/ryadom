@@ -6,3 +6,4 @@ export * from "./schemas";
 export * from "./age";
 export * from "./phone";
 export * from "./products";
+export * from "./push";

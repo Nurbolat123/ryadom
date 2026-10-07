@@ -1,4 +1,12 @@
-import { newPresence, presenceKeys, PresenceSchema, RULES, type Presence } from "@ryadom/shared";
+import {
+  newPresence,
+  PUSH_KINDS,
+  presenceKeys,
+  PresenceSchema,
+  RULES,
+  type Presence,
+  type PushKind,
+} from "@ryadom/shared";
 import type { Redis } from "ioredis";
 
 /**
@@ -146,14 +154,17 @@ export const USER_CHANNEL = "ryadom:user";
 export type UserEvent =
   /** Взаимная симпатия: обоим сразу, с id нового чата. */
   | { type: "match"; userId: string; chatId: string }
-  /** Входящие изменились (новый привет или анонимное уведомление). */
-  | { type: "inbox"; userId: string }
+  /** Входящие изменились (новый привет или анонимное уведомление). push — вид уведомления, если нужно. */
+  | { type: "inbox"; userId: string; push?: PushKind }
   /** В чате новое сообщение или изменение (ответ на привет, обмен контактами). */
-  | { type: "chat"; userId: string; chatId: string }
+  | { type: "chat"; userId: string; chatId: string; push?: PushKind }
   /** Блокировка: обновить всё (список, входящие, чаты). Кто и кого — не передаётся. */
   | { type: "refresh"; userId: string }
   /** Аккаунт заблокирован модератором: закрыть подключения. */
   | { type: "logout"; userId: string };
+
+const isPushKind = (v: unknown): v is PushKind =>
+  typeof v === "string" && (PUSH_KINDS as readonly string[]).includes(v);
 
 export const publishUserEvent = (redis: Redis, event: UserEvent) =>
   redis.publish(USER_CHANNEL, JSON.stringify(event));
@@ -162,10 +173,12 @@ export const parseUserEvent = (raw: string): UserEvent | null => {
   try {
     const e = JSON.parse(raw) as UserEvent;
     if (!e.userId) return null;
-    if (e.type === "inbox" || e.type === "refresh" || e.type === "logout")
-      return { type: e.type, userId: e.userId };
-    if ((e.type === "match" || e.type === "chat") && e.chatId)
-      return { type: e.type, userId: e.userId, chatId: e.chatId };
+    const push = "push" in e && isPushKind(e.push) ? { push: e.push } : {};
+    if (e.type === "inbox") return { type: e.type, userId: e.userId, ...push };
+    if (e.type === "refresh" || e.type === "logout") return { type: e.type, userId: e.userId };
+    if (e.type === "match" && e.chatId) return { type: e.type, userId: e.userId, chatId: e.chatId };
+    if (e.type === "chat" && e.chatId)
+      return { type: e.type, userId: e.userId, chatId: e.chatId, ...push };
     return null;
   } catch {
     return null;

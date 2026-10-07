@@ -165,7 +165,7 @@ describe("отправка подарка", () => {
     expect(g.commission).toBe(Math.round(coffee.price * 0.12));
     expect(payments.payments.get(g.paymentId!)).toBe(coffee.price);
     expect(g.expiresAt.getTime() - g.createdAt.getTime()).toBe(2 * 3600_000);
-    expect(bus.events).toEqual([{ type: "inbox", userId: b.id }]);
+    expect(bus.events).toEqual([{ type: "inbox", userId: b.id, push: "gift" }]);
 
     expect((await send(a.id, b.id)).status).toBe(409);
     // В списке людей — «Ты угостил(а)».

@@ -14,6 +14,7 @@
     "@ryadom/db": "workspace:*",
     "@ryadom/gifts": "workspace:*",
     "@ryadom/presence": "workspace:*",
+    "@ryadom/push": "workspace:*",
     "@ryadom/shared": "workspace:*",
     "ioredis": "^5.4.2",
     "socket.io": "^4.8.1"

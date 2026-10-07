@@ -16,6 +16,9 @@ export const RULES = {
   giftsPerSenderPerDay: 3,
   /** Попыток отправить подарок в час (rate limit поверх дневного лимита). */
   giftAttemptsPerHour: 20,
+  /** Web Push: не больше 10 устройств на человека, 20 подписок в час. */
+  pushDevicesPerUser: 10,
+  pushSubscribesPerHour: 20,
   /** Подарок истекает через 2 часа. */
   giftTtlSeconds: 2 * 60 * 60,
   /** Симпатия живёт 24 часа после окончания визита. */
