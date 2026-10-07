@@ -1,6 +1,6 @@
 import { createPrismaClient } from "@ryadom/db";
 import { Redis } from "ioredis";
-import { createLinkCode, LINK_TTL_SECONDS } from "./orders";
+import { createLinkCode, LINK_TTL_SECONDS } from "@ryadom/gifts";
 
 /** pnpm bot:link <slug заведения> — одноразовый код, чтобы привязать чат персонала в Telegram. */
 const slug = process.argv[2];

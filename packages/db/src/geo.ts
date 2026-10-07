@@ -256,3 +256,26 @@ export const isPointInVenue = async (
     FROM "Venue" WHERE "id" = ${venueId} AND "isActive" AND "geofence" IS NOT NULL`;
   return row?.inside === true;
 };
+
+export type VenueGeometry = {
+  /** Точка заведения [долгота, широта]. Только для админки: координаты заведения, не людей. */
+  location: LngLat;
+  /** Внешний контур геозоны. */
+  ring: LngLat[];
+  areaM2: number;
+};
+
+/** Точка и контур геозоны заведения — для админки (правка геозоны). */
+export const getVenueGeometry = async (
+  db: RawDb,
+  venueId: string,
+): Promise<VenueGeometry | null> => {
+  const [row] = await db.$queryRaw<{ lng: number; lat: number; ring: string; area: number }[]>`
+    SELECT ST_X("location"::geometry) AS "lng", ST_Y("location"::geometry) AS "lat",
+           ST_AsGeoJSON(ST_ExteriorRing("geofence"::geometry), 7) AS "ring",
+           ST_Area("geofence") AS "area"
+    FROM "Venue" WHERE "id" = ${venueId} AND "location" IS NOT NULL AND "geofence" IS NOT NULL`;
+  if (!row) return null;
+  const ring = (JSON.parse(row.ring) as { coordinates: [number, number][] }).coordinates;
+  return { location: [row.lng, row.lat], ring, areaM2: Math.round(row.area) };
+};

@@ -7,6 +7,8 @@ import ui from "./ui.module.css";
 
 const LINKS = [
   ["/admin", "reportsLink"],
+  ["/admin/venues", "venuesLink"],
+  ["/admin/suggestions", "suggestionsLink"],
   ["/admin/gifts", "giftsLink"],
   ["/admin/offers", "offersLink"],
   ["/admin/partners", "partnersLink"],
@@ -24,7 +26,9 @@ export function AdminNav() {
           key={href}
           href={href}
           className={ui.chip}
-          aria-current={path === href ? "page" : undefined}
+          aria-current={
+            path === href || (href !== "/admin" && path.startsWith(`${href}/`)) ? "page" : undefined
+          }
         >
           {t(key)}
         </Link>

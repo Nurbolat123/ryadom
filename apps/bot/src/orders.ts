@@ -1,6 +1,5 @@
-import { randomInt } from "node:crypto";
 import type { PrismaClient } from "@ryadom/db";
-import { redeemGift } from "@ryadom/gifts";
+import { linkKey, redeemGift } from "@ryadom/gifts";
 import { publishUserEvent } from "@ryadom/presence";
 import type { Redis } from "ioredis";
 
@@ -15,17 +14,7 @@ export type StaffApi = {
   sendMessage(chatId: string, text: string, buttons?: InlineButton[]): Promise<void>;
 };
 
-export const LINK_TTL_SECONDS = 60 * 60;
-export const linkKey = (code: string) => `bot-link:${code}`;
 const REDEEM_PREFIX = "redeem:";
-
-/** Одноразовый код привязки чата персонала к заведению (живёт час). */
-export const createLinkCode = async (redis: Redis, venueId: string) => {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  const code = Array.from({ length: 6 }, () => alphabet[randomInt(alphabet.length)]).join("");
-  await redis.set(linkKey(code), venueId, "EX", LINK_TTL_SECONDS);
-  return code;
-};
 
 export const orderText = (o: {
   item: string;

@@ -21,8 +21,8 @@ import { canSeePerson } from "./people";
 
 const deps = () => ({ db: prisma, payments: getPaymentProvider() });
 
-const defaultCommissionPct = () => Number(process.env.PLATFORM_COMMISSION_PCT ?? 12);
-const defaultMaxAmount = () => Number(process.env.DEFAULT_MAX_GIFT_AMOUNT ?? 500_000);
+export const defaultCommissionPct = () => Number(process.env.PLATFORM_COMMISSION_PCT ?? 12);
+export const defaultMaxAmount = () => Number(process.env.DEFAULT_MAX_GIFT_AMOUNT ?? 500_000);
 
 const giftableItems = (venueId: string, maxAmount: number) =>
   prisma.menuItem.findMany({

@@ -49,6 +49,10 @@ const SAME_IN_BOTH = new Set([
   "admin.funnelLink",
   "admin.funnelTitle",
   "admin.offerType.promo",
+  "adminVenues.meters",
+  "adminVenues.alcohol",
+  "adminVenues.item.isAlcohol",
+  "adminVenues.source.dgis",
 ]);
 
 const ROOT = join(__dirname, "..");

@@ -151,3 +151,53 @@ export const OfferInputSchema = z
     message: "event_of_day",
     path: ["placement"],
   });
+
+// ───────────────────────── Админка заведений ─────────────────────────
+
+/** Радиус ручной геозоны-круга, м: меньше — не попасть с погрешностью GPS, больше — соседние места. */
+export const GEOFENCE_RADIUS_M = { min: 15, max: 150 } as const;
+
+/** Правка заведения. Суммы — в тенге (целые), в базе хранятся в тиынах. */
+export const VenueUpdateSchema = z
+  .object({
+    name: z.string().trim().min(2).max(80),
+    category: VenueCategorySchema,
+    address: z.string().trim().max(200).nullable(),
+    isActive: z.boolean(),
+    isPartner: z.boolean(),
+    /** Комиссия платформы, %; null — общая настройка PLATFORM_COMMISSION_PCT. */
+    commissionPct: z.number().min(0).max(50).nullable(),
+    /** Максимальная стоимость подарка, ₸; null — DEFAULT_MAX_GIFT_AMOUNT. */
+    maxGiftAmount: z.number().int().min(100).max(100_000).nullable(),
+  })
+  .partial()
+  .strict();
+
+/** Ручная геозона-круг: точка заведения и радиус. Импорт её больше не перезапишет. */
+export const GeofenceInputSchema = LatLngSchema.extend({
+  radiusM: z.number().int().min(GEOFENCE_RADIUS_M.min).max(GEOFENCE_RADIUS_M.max),
+}).strict();
+
+/**
+ * Новое заведение, добавленное модератором (геозона — круг 35 м, потом можно поправить).
+ * Город определяется по точке.
+ */
+export const VenueCreateSchema = LatLngSchema.extend({
+  name: z.string().trim().min(2).max(80),
+  category: VenueCategorySchema,
+  address: z.string().trim().max(200).optional(),
+}).strict();
+
+/** Позиция меню. Цена — в тенге. Алкоголь нельзя подарить (правило 8). */
+export const MenuItemInputSchema = z
+  .object({
+    name: z.string().trim().min(2).max(80),
+    nameKk: z.string().trim().max(80).nullable().optional(),
+    price: z.number().int().min(1).max(1_000_000),
+    isAlcohol: z.boolean(),
+    giftable: z.boolean(),
+    isAvailable: z.boolean(),
+    sortOrder: z.number().int().min(0).max(999).optional(),
+  })
+  .strict()
+  .refine((m) => !(m.isAlcohol && m.giftable), { message: "alcohol", path: ["giftable"] });

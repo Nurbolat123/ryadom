@@ -2,7 +2,8 @@ import { createPrismaClient } from "@ryadom/db";
 import { USER_CHANNEL } from "@ryadom/presence";
 import { Redis } from "ioredis";
 import { afterAll, describe, expect, it } from "vitest";
-import { createLinkCode, createOrders } from "../src/orders";
+import { createLinkCode } from "@ryadom/gifts";
+import { createOrders } from "../src/orders";
 
 const db = createPrismaClient();
 const redis = new Redis(process.env.REDIS_URL ?? "redis://localhost:6379");

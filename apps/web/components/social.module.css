@@ -547,3 +547,104 @@
   flex-direction: column;
   gap: 12px;
 }
+
+/* Админка заведений. */
+
+.adminRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.adminRow > * {
+  flex: 1 1 160px;
+}
+
+.adminLog {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.adminLog li {
+  display: grid;
+  gap: 2px;
+}
+
+.adminVenue {
+  color: inherit;
+  text-decoration: none;
+}
+
+.adminTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tag,
+.tagPartner,
+.tagOff {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--bg);
+  color: var(--text-2);
+}
+
+.tagPartner {
+  background: var(--warm);
+  color: var(--coral);
+}
+
+.tagOff {
+  background: var(--text);
+  color: var(--card);
+}
+
+.adminItemSide {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.geoPreview {
+  width: min(100%, 280px);
+  align-self: center;
+  aspect-ratio: 1;
+  border-radius: 18px;
+  background: var(--bg);
+}
+
+.geoGrid {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.geoFence {
+  fill: color-mix(in srgb, var(--coral) 22%, transparent);
+  stroke: var(--coral);
+  stroke-width: 2;
+}
+
+.geoPoint {
+  fill: var(--coral);
+}
+
+.geoProposed {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 2;
+  stroke-dasharray: 6 5;
+}
+
+.geoScale {
+  font-size: 12px;
+  fill: var(--text-2);
+}
